@@ -31,11 +31,13 @@ export function SignupForm({
     email?: string
     password?: string
   }>({})
+  const [formError, setFormError] = useState<string | null>(null)
 
   const handleGoogleSignUp = async () => {
     if (!isLoaded) return
 
     setIsLoading(true)
+    setFormError(null)
     try {
       await signUp.authenticateWithRedirect({
         strategy: "oauth_google",
@@ -44,9 +46,7 @@ export function SignupForm({
       })
     } catch (err: any) {
       console.error("Google signup error:", err)
-      setErrors({
-        email: "Failed to sign up with Google. Please try again.",
-      })
+      setFormError("Failed to sign up with Google. Please try again.")
       setIsLoading(false)
     }
   }
@@ -57,6 +57,7 @@ export function SignupForm({
 
     setIsLoading(true)
     setErrors({})
+    setFormError(null)
 
     const username = usernameValue
     const email = emailValue
@@ -76,6 +77,14 @@ export function SignupForm({
       router.push("/otp")
     } catch (err: any) {
       console.error("Signup error:", err)
+      
+      // Check for network errors first
+      if (err.message?.includes("Failed to fetch") || err.message?.includes("NetworkError")) {
+        setFormError("Network error. Please check your connection and try again.")
+        setIsLoading(false)
+        return
+      }
+      
       if (err.errors && err.errors.length > 0) {
         const newErrors: typeof errors = {}
         err.errors.forEach((error: any) => {
@@ -153,12 +162,15 @@ export function SignupForm({
                 }
               } else {
                 console.warn("Unhandled error:", error)
-                // Don't default to email - show generic error or log it
-                newErrors.email = errorMessage || "An error occurred. Please try again."
+                // Set as form-level error instead of defaulting to email field
+                setFormError(errorMessage || "An error occurred. Please try again.")
               }
           }
         })
         setErrors(newErrors)
+      } else {
+        // No specific errors, show general form error
+        setFormError("An error occurred. Please try again.")
       }
     } finally {
       setIsLoading(false)
@@ -279,6 +291,13 @@ export function SignupForm({
                   </span>
                 </Button>
               </Field>
+              {formError && (
+                <Field>
+                  <FieldDescription className="text-destructive text-center">
+                    {formError}
+                  </FieldDescription>
+                </Field>
+              )}
               <FieldDescription className="text-center">
                 Already have an account?{" "}
                 <Link href="/log-in" className="text-primary underline-offset-4 hover:underline">

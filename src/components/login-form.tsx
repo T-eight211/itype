@@ -28,11 +28,13 @@ export function LoginForm({
     identifier?: string
     password?: string
   }>({})
+  const [formError, setFormError] = useState<string | null>(null)
 
   const handleGoogleSignIn = async () => {
     if (!isLoaded) return
 
     setIsLoading(true)
+    setFormError(null)
     try {
       await signIn.authenticateWithRedirect({
         strategy: "oauth_google",
@@ -41,9 +43,7 @@ export function LoginForm({
       })
     } catch (err: any) {
       console.error("Google signin error:", err)
-      setErrors({
-        identifier: "Failed to sign in with Google. Please try again.",
-      })
+      setFormError("Failed to sign in with Google. Please try again.")
       setIsLoading(false)
     }
   }
@@ -54,6 +54,7 @@ export function LoginForm({
 
     setIsLoading(true)
     setErrors({})
+    setFormError(null)
 
     const identifier = identifierValue
     const password = passwordValue
@@ -65,9 +66,7 @@ export function LoginForm({
       })
 
       if (result.status === "needs_second_factor") {
-        setErrors({
-          identifier: "Two-factor authentication is required. Please complete the verification.",
-        })
+        setFormError("Two-factor authentication is required. Please complete the verification.")
         return
       }
 
@@ -77,17 +76,14 @@ export function LoginForm({
         router.push("/")
         window.location.href = "/"
       } else {
-        setErrors({
-          identifier: "Sign in incomplete. Please try again.",
-        })
+        setFormError("Sign in incomplete. Please try again.")
       }
     } catch (err: any) {
       console.error("Login error:", err)
       
       if (err.message?.includes("Failed to fetch") || err.message?.includes("NetworkError")) {
-        setErrors({
-          identifier: "Network error. Please check your connection and try again.",
-        })
+        setFormError("Network error. Please check your connection and try again.")
+        setIsLoading(false)
         return
       }
 
@@ -109,14 +105,14 @@ export function LoginForm({
               }
               break
             default:
-              newErrors.identifier = error.message || "An error occurred. Please try again."
+              // Set as form-level error for unhandled errors
+              setFormError(error.message || "An error occurred. Please try again.")
           }
         })
         setErrors(newErrors)
       } else {
-        setErrors({
-          identifier: "An error occurred. Please try again.",
-        })
+        // No specific errors, show general form error
+        setFormError("An error occurred. Please try again.")
       }
     } finally {
       setIsLoading(false)
@@ -213,6 +209,13 @@ export function LoginForm({
                   </span>
                 </Button>
               </Field>
+              {formError && (
+                <Field>
+                  <FieldDescription className="text-destructive text-center">
+                    {formError}
+                  </FieldDescription>
+                </Field>
+              )}
               <FieldDescription className="text-center">
                 Don&apos;t have an account?{" "}
                 <Link href="/sign-up" className="text-primary underline-offset-4 hover:underline">
