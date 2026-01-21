@@ -1,8 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useSignIn } from "@clerk/nextjs"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -14,63 +12,15 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { useForgotPassword } from "../hooks/use-forgot-password"
 
 export function ForgotPasswordForm({ className, ...props }: React.ComponentProps<"div">) {
-  const router = useRouter()
-  const { isLoaded, signIn } = useSignIn()
   const [email, setEmail] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string>("")
+  const { isLoaded, isLoading, error, sendResetCode, clearError } = useForgotPassword()
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    
-    if (!isLoaded || !signIn) {
-      setError("Please wait while we initialize...")
-      return
-    }
-
-    if (!email.trim()) {
-      setError("Please enter your email address")
-      return
-    }
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      setError("Please enter a valid email address")
-      return
-    }
-
-    setIsLoading(true)
-    setError("")
-
-    try {
-      // Send the password reset code to the user's email
-      await signIn.create({
-        strategy: "reset_password_email_code",
-        identifier: email,
-      })
-
-      // Redirect to reset password page after successful code send
-      router.push("/reset-password")
-    } catch (err: any) {
-      console.error("Password reset error:", err)
-      
-      if (err.message?.includes("Failed to fetch") || err.message?.includes("NetworkError")) {
-        setError("Network error. Please check your connection and try again.")
-        return
-      }
-
-      if (err.errors && err.errors.length > 0) {
-        const errorMessage = err.errors[0]?.longMessage || err.errors[0]?.message || "Failed to send reset code. Please try again."
-        setError(errorMessage)
-      } else {
-        setError("An error occurred. Please try again.")
-      }
-    } finally {
-      setIsLoading(false)
-    }
+    await sendResetCode(email)
   }
 
   return (
@@ -104,7 +54,7 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
                   onChange={(e) => {
                     setEmail(e.target.value)
                     if (error) {
-                      setError("")
+                      clearError()
                     }
                   }}
                   aria-invalid={!!error}

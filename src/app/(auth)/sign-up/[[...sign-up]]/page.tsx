@@ -1,32 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
-import { useUser, useSignUp } from "@clerk/nextjs"
-import { useRouter } from "next/navigation"
-import { SignupForm } from "@/components/signup-form"
+import { SignupForm } from "@/features/auth/components/signup-form"
+import { useAuthRedirect } from "@/features/auth/hooks/use-auth-redirect"
 
 export default function SignupPage() {
-  const { isSignedIn, isLoaded: userLoaded } = useUser()
-  const { signUp, isLoaded: signUpLoaded } = useSignUp()
-  const router = useRouter()
+  const { isLoaded, isSignedIn } = useAuthRedirect()
 
-  useEffect(() => {
-    if (!userLoaded || !signUpLoaded) return
-
-    if (isSignedIn) {
-      router.push("/")
-      return
-    }
-
-    if (signUp && signUp.status === "complete") {
-      router.push("/")
-      window.location.href = "/"
-      return
-    }
-    
-  }, [userLoaded, signUpLoaded, isSignedIn, signUp, router])
-
-  if (!userLoaded || !signUpLoaded || isSignedIn) {
+  if (!isLoaded || isSignedIn) {
     return null
   }
 

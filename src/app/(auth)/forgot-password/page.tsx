@@ -1,19 +1,10 @@
 "use client"
 
-import { useEffect } from "react"
-import { useUser } from "@clerk/nextjs"
-import { useRouter } from "next/navigation"
-import { ForgotPasswordForm } from "@/components/forgot-password-form"
+import { ForgotPasswordForm } from "@/features/auth/components/forgot-password-form"
+import { useAuthRedirect } from "@/features/auth/hooks/use-auth-redirect"
 
 export default function ForgotPasswordPage() {
-  const { isSignedIn, isLoaded } = useUser()
-  const router = useRouter()
-
-  useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      router.push("/")
-    }
-  }, [isLoaded, isSignedIn, router])
+  const { isLoaded, isSignedIn } = useAuthRedirect()
 
   if (!isLoaded || isSignedIn) {
     return null
@@ -27,4 +18,3 @@ export default function ForgotPasswordPage() {
     </div>
   )
 }
-

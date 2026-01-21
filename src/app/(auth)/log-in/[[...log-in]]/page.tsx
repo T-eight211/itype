@@ -1,35 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
-import { useUser, useSignIn } from "@clerk/nextjs"
-import { useRouter } from "next/navigation"
-import { LoginForm } from "@/components/login-form"
+import { LoginForm } from "@/features/auth/components/login-form"
+import { useAuthRedirect } from "@/features/auth/hooks/use-auth-redirect"
 
 export default function LoginPage() {
-  const { isSignedIn, isLoaded: userLoaded } = useUser()
-  const { signIn, isLoaded: signInLoaded, setActive } = useSignIn()
-  const router = useRouter()
+  const { isLoaded, isSignedIn } = useAuthRedirect()
 
-  useEffect(() => {
-    if (!userLoaded || !signInLoaded) return
-
-    if (isSignedIn) {
-      router.push("/")
-      return
-    }
-
-
-    if (signIn && signIn.status === "complete") {
-
-      setActive({ session: signIn.createdSessionId }).then(() => {
-        router.push("/")
-        window.location.href = "/"
-      })
-      return
-    }
-  }, [userLoaded, signInLoaded, isSignedIn, signIn, router, setActive])
-
-  if (!userLoaded || !signInLoaded || isSignedIn) {
+  if (!isLoaded || isSignedIn) {
     return null
   }
 

@@ -1,19 +1,10 @@
 "use client"
 
-import { useEffect } from "react"
-import { useUser } from "@clerk/nextjs"
-import { useRouter } from "next/navigation"
-import { ResetPasswordForm } from "@/components/reset-password-form"
+import { ResetPasswordForm } from "@/features/auth/components/reset-password-form"
+import { useAuthRedirect } from "@/features/auth/hooks/use-auth-redirect"
 
 export default function ResetPasswordPage() {
-  const { isSignedIn, isLoaded } = useUser()
-  const router = useRouter()
-
-  useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      router.push("/")
-    }
-  }, [isLoaded, isSignedIn, router])
+  const { isLoaded, isSignedIn } = useAuthRedirect()
 
   if (!isLoaded || isSignedIn) {
     return null

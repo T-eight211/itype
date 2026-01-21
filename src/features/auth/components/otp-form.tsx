@@ -1,8 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useSignUp } from "@clerk/nextjs"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -19,118 +17,21 @@ import {
   InputOTPSeparator,
   InputOTPSlot,
 } from "@/components/ui/input-otp"
+import { useOTPVerification } from "../hooks/use-otp-verification"
 
 export function OTPForm({ className, ...props }: React.ComponentProps<"div">) {
-  const { signUp, isLoaded } = useSignUp()
-  const router = useRouter()
   const [code, setCode] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string>("")
-
-  useEffect(() => {
-    if (isLoaded) {
-      if (!signUp || signUp.status === null || signUp.status !== "missing_requirements") {
-        router.push("/sign-up")
-      }
-    }
-  }, [isLoaded, signUp, router])
+  const { isLoaded, isLoading, error, verifyCode, resendCode } = useOTPVerification()
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!isLoaded || !signUp) {
-      setError("Please start the signup process first.")
-      router.push("/sign-up")
-      return
-    }
-
-    if (code.length !== 6) {
-      setError("Please enter a 6-digit code")
-      return
-    }
-
-    if (signUp.status !== "missing_requirements") {
-      setError("Please start the signup process first.")
-      router.push("/sign-up")
-      return
-    }
-
-    setIsLoading(true)
-    setError("")
-
-    try {
-      const result = await signUp.attemptEmailAddressVerification({
-        code,
-      })
-
-      if (result.status === "complete") {
-        await new Promise((resolve) => setTimeout(resolve, 500))
-        window.location.href = "/"
-      } else {
-        setError("Verification incomplete. Please try again.")
-      }
-    } catch (err: any) {
-      console.error("OTP verification error:", err)
-      
-      if (err.message?.includes("Failed to fetch") || err.message?.includes("NetworkError")) {
-        setError("Network error. Please check your connection and try again.")
-        return
-      }
-
-      // Handle expired session
-      if (err.errors && err.errors.some((e: any) => e.code === "session_expired" || e.code === "form_identifier_not_found")) {
-        setError("Your session has expired. Please start over.")
-        setTimeout(() => {
-          router.push("/sign-up")
-        }, 2000)
-        return
-      }
-
-      if (err.errors && err.errors.length > 0) {
-        const errorMessage = err.errors[0]?.message || "Invalid code. Please try again."
-        setError(errorMessage)
-      } else {
-        setError("An error occurred. Please try again.")
-      }
-    } finally {
-      setIsLoading(false)
-    }
+    await verifyCode(code)
   }
 
   const handleResend = async () => {
-    if (!isLoaded || !signUp) {
-      setError("Please start the signup process first.")
-      router.push("/sign-up")
-      return
-    }
-
-    setIsLoading(true)
-    setError("")
-
-    try {
-      await signUp.prepareEmailAddressVerification({
-        strategy: "email_code",
-      })
+    const success = await resendCode()
+    if (success) {
       setCode("")
-      setError("")
-    } catch (err: any) {
-      console.error("Resend error:", err)
-      
-      if (err.message?.includes("Failed to fetch") || err.message?.includes("NetworkError")) {
-        setError("Network error. Please check your connection and try again.")
-        return
-      }
-
-      if (err.errors && err.errors.some((e: any) => e.code === "session_expired" || e.code === "form_identifier_not_found")) {
-        setError("Your session has expired. Please start over.")
-        setTimeout(() => {
-          router.push("/sign-up")
-        }, 2000)
-        return
-      }
-
-      setError("Failed to resend code. Please try again.")
-    } finally {
-      setIsLoading(false)
     }
   }
 
