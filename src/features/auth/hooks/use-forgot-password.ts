@@ -1,8 +1,8 @@
 import { useState } from "react"
 import { useSignIn } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
-import { validateEmail } from "../lib/validators"
-import { mapGenericError, isNetworkError } from "../lib/error-mappers"
+import { validateEmail, isNetworkError } from "../lib/validators"
+import { mapGenericError } from "../lib/error-mappers"
 import { AUTH_ROUTES } from "../lib/constants"
 
 export function useForgotPassword() {

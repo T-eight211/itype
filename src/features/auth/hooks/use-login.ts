@@ -1,7 +1,8 @@
 import { useState } from "react"
 import { useSignIn } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
-import { mapLoginErrors, isNetworkError } from "../lib/error-mappers"
+import { mapLoginErrors } from "../lib/error-mappers"
+import { isNetworkError } from "../lib/validators"
 import { AUTH_REDIRECT_URLS, AUTH_ROUTES } from "../lib/constants"
 
 export function useLogin() {

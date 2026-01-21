@@ -2,13 +2,9 @@
  * Maps Clerk API errors to user-friendly error messages
  */
 
-import { isNetworkError as checkNetworkError } from "./validators"
-
 export type FieldErrors = {
   [key: string]: string
 }
-
-export const isNetworkError = checkNetworkError
 
 export function mapLoginErrors(errors: any[]): {
   fieldErrors: FieldErrors
