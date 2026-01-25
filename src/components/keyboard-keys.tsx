@@ -25,40 +25,53 @@ export default function KeyboardKey({
         group
         relative
         inline-flex
-        h-[60px] // change this 
-        w-[60px] // change this 
+
+        h-[30px] md:h-[60px] /* change this (mobile half) */
+        w-[30px] md:w-[60px] /* change this (mobile half) */
+
         items-center
         flex-col
-        rounded-[10px]
-        p-3 // change this 
+        
+        rounded-[5px] md:rounded-[10px]
+        p-1.5 md:p-3 /* change this (mobile half) */
+
         bg-gradient-to-t from-[#282828] to-[#202020]
-        shadow-[inset_0_-8px_8px_rgba(0,0,0,0.15),inset_0_-8px_8px_rgba(0,0,0,0.25),0_0_0_2px_rgba(0,0,0,0.75),10px_20px_25px_rgba(0,0,0,0.4)]
+        shadow-[inset_0_-8px_8px_rgba(0,0,0,0.15),inset_0_-8px_8px_rgba(0,0,0,0.25),0_0_0_1px_rgba(0,0,0,0.75),10px_20px_25px_rgba(0,0,0,0.4)]
         
         transition-transform
-        active:translate-y-1
+        active:translate-y-0.5 md:active:translate-y-1
         focus:outline-none
         
         /* THE KEY BEVEL (Top Surface) */
         before:absolute
-        before:top-1
-        before:left-1
-        before:right-2.25 // change this 
-        before:bottom-3 // change this 
+
+        before:top-0.5 md:before:top-1 /* change this (mobile half) */
+        before:left-0.5 md:before:left-1 /* change this (mobile half) */
+        before:right-[0.28125rem] md:before:right-2.25
+        before:bottom-1.5 md:before:bottom-3
+
+
         before:z-10
-        before:rounded-[10px]
+        
+        before:rounded-[5px] md:before:rounded-[10px]
+
         before:bg-gradient-to-r before:from-[#232323] before:to-[#4a4a4a]
         before:content-['']
-        before:border-t-[1px] before:border-t-[#0009]
+        before:border-t-[1px] before:border-t-[#0009] 
         before:border-l-[1px] before:border-l-[#0004]
         before:border-b-[1px] before:border-b-[#0004]
         before:shadow-[inset_-10px_-10px_10px_rgba(255,255,255,0.15),10px_5px_10px_rgba(0,0,0,0.15)]
         
         /* THE RAINBOW GLOW (Behind the key) */
         after:absolute
-        after:-inset-1.5 // change this 
+
+        after:-inset-[0.1875rem] md:after:-inset-1.5 /* change this (mobile half) */
+
         after:-z-10
-        after:rounded-[14px]
-        after:blur-[9px] // change this 
+
+        after:rounded-[7px] md:after:rounded-[14px] /* change this (mobile half) */
+        after:blur-[4.5px] md:after:blur-[9px] /* change this (mobile half) */
+
         after:opacity-50
         after:content-['']
         after:bg-[length:200%]
@@ -74,11 +87,11 @@ export default function KeyboardKey({
           className="
             relative
             z-20
-            -left-1
-            text-lg // change this 
+
+            -left-0.5 md:-left-1 /* change this (mobile half) */
+            text-[0.5625rem] md:text-lg /* change this (mobile half of 18px = 9px) */
             font-normal
             
-
             /* rainbow text */
             bg-[linear-gradient(90deg,hsl(0,100%,63%),hsl(90,100%,63%),hsl(210,100%,63%),hsl(195,100%,63%),hsl(270,100%,63%))]
             bg-[length:200%]
@@ -96,7 +109,8 @@ export default function KeyboardKey({
             before:[animation:rainbow_2s_linear_infinite]
             before:bg-clip-text
             before:text-transparent
-            before:blur-[8px]
+
+            before:blur-[4px] md:before:blur-[8px] /* (extra change) mobile half to match your scaling */
             before:opacity-90
           "
         >
