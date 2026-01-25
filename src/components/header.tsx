@@ -3,7 +3,7 @@
 import { SignedIn, SignedOut, SignOutButton, useUser, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import Logo from "@/components/wordmark";
+import Logo from "@/components/logo";
 
 export default function Header() {
   const { isLoaded } = useUser();

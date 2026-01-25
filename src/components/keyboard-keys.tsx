@@ -64,14 +64,14 @@ export default function KeyboardKey({
         /* THE RAINBOW GLOW (Behind the key) */
         after:absolute
 
-        after:-inset-[0.09375rem] sm:after:-inset-[0.1875rem] md:after:-inset-1.5 /* change this */
+        after:-inset-[0.09375rem] sm:after:-inset-[0.1875rem] md:after:-inset-1.5 dark:after:-inset-[0.046875rem] sm:dark:after:-inset-[0.09375rem] md:dark:after:-inset-0.75 /* change this */
 
         after:-z-10
 
         after:rounded-[3.5px] sm:after:rounded-[7px] md:after:rounded-[14px] /* change this */
         after:blur-[2.25px] sm:after:blur-[4.5px] md:after:blur-[9px] /* change this */
 
-        after:opacity-50
+        after:opacity-50 dark:after:opacity-30
         after:content-['']
         after:bg-[length:200%]
         after:[animation:rainbow_2s_linear_infinite]
@@ -110,7 +110,7 @@ export default function KeyboardKey({
             before:text-transparent
 
             before:blur-[2px] sm:before:blur-[4px] md:before:blur-[8px] /* change this */
-            before:opacity-90
+            before:opacity-90 
           "
         >
           {children}
