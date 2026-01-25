@@ -4,7 +4,8 @@ import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import Header from "@/components/header";
-import { ThemeProvider } from "@/components/theme-provider"
+import { ThemeProvider } from "@/components/theme-provider";
+import { ModeToggle } from "@/components/mode-toogle";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,11 +35,15 @@ export default function RootLayout({
         >
            <ThemeProvider
             attribute="class"
-            forcedTheme="dark"
+            defaultTheme="dark"
+            enableSystem
             disableTransitionOnChange
           >
           <Header />
           {children}
+          <div className="fixed bottom-4 right-4 z-50">
+            <ModeToggle />
+          </div>
           <SpeedInsights />
           </ThemeProvider>
         </body>
