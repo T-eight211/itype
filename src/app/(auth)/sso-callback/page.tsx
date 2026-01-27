@@ -15,7 +15,7 @@ function SSOCallbackContent() {
 export default function SSOCallbackPage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center pt-20 md:pt-30">
         <div className="text-center">
           <p className="text-lg">Loading...</p>
         </div>
