@@ -38,5 +38,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 ## Credit
 Layouts, languages, and quotes are extracted from the Monkeytype project:
 https://github.com/monkeytypegame/monkeytype/tree/master/frontend/static
-This project uses data/assets originally created by Luke Peavey,
-licensed under the MIT License.
+
+Monkeytype is Copyright (C) 2020-2024 Monkeytype and contributors.
+
+This project is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
