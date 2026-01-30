@@ -127,7 +127,7 @@ export function SignupForm({
                   </FieldDescription>
                 )}
               </Field>
-              <div id="clerk-captcha"/>
+              <div id="clerk-captcha" data-cl-size="flexible" />
               <Field>
                 <Button
                   type="submit"

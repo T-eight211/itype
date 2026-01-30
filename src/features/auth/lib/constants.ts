@@ -5,11 +5,11 @@
 export const AUTH_REDIRECT_URLS = {
   GOOGLE_SIGNUP: "/sso-callback?flow=signup",
   GOOGLE_LOGIN: "/sso-callback?flow=login",
-  COMPLETE: "/",
+  COMPLETE: "/game",
 } as const
 
 export const AUTH_ROUTES = {
-  HOME: "/",
+  HOME: "/game",
   LOGIN: "/log-in",
   SIGNUP: "/sign-up",
   OTP: "/otp",

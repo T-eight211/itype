@@ -23,7 +23,7 @@ export function LandingPage() {
   }, [text, isTyping]);
 
   return (
-    <BackgroundLines className="flex items-center justify-center w-full flex-col px-4 py-20 min-h-screen">
+    <BackgroundLines className="flex items-center justify-center w-full flex-col px-4 py-15 !h-auto ">
       <div className="w-full text-center space-y-8 relative z-20">
         <div className="max-w-7xl mx-auto">
           <h1 className="bg-clip-text text-transparent text-center bg-gradient-to-b from-neutral-900 to-neutral-700 dark:from-neutral-100 dark:to-neutral-400 text-4xl md:text-6xl lg:text-8xl font-sans font-bold tracking-tight">

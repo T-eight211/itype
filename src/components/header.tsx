@@ -9,7 +9,7 @@ export default function Header() {
   const { isLoaded } = useUser();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 lg:px-8 py-4">
+    <header className="sticky top-0 z-50 px-4 sm:px-6 lg:px-8 py-4 bg-transparent">
       <div className="mx-auto max-w-screen-2xl bg-background/30 backdrop-blur-sm border border-border shadow-lg rounded-2xl">
         <div className="flex items-center justify-between px-6 py-2">
           <Link href="/" className="flex items-center">

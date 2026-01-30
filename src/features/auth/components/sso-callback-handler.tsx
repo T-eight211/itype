@@ -20,8 +20,8 @@ export function SSOCallbackHandler({ flow, continueSignUp }: SSOCallbackHandlerP
         signInUrl="/log-in"
         signUpUrl="/sign-up"
         continueSignUpUrl="/sso-callback?flow=signup"
-        signInFallbackRedirectUrl="/"
-        signUpFallbackRedirectUrl="/"
+        signInFallbackRedirectUrl="/game"
+        signUpFallbackRedirectUrl="/game"
       />
     )
   }
@@ -35,8 +35,8 @@ export function SSOCallbackHandler({ flow, continueSignUp }: SSOCallbackHandlerP
         signInUrl="/log-in"
         signUpUrl="/sign-up"
         continueSignUpUrl="/sso-callback?flow=login&continue=true"
-        signInFallbackRedirectUrl="/"
-        signUpFallbackRedirectUrl="/"
+        signInFallbackRedirectUrl="/game"
+        signUpFallbackRedirectUrl="/game"
       />
     )
   }

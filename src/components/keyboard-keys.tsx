@@ -80,7 +80,7 @@ export default function KeyboardKey({
         ${className}
       `}
       >
-        {/* TEXT: rainbow + glow */}
+      
         <span
           data-text={text}
           className="
