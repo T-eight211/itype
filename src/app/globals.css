@@ -112,6 +112,21 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+@keyframes cursor-blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+/* Typing game textarea: hide selection highlight so invisible text doesn't show blue when selected */
+.typing-input-no-select::selection {
+  background: transparent;
+  color: transparent;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
