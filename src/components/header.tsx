@@ -18,6 +18,9 @@ export default function Header() {
           {isLoaded && (
             <div className="flex items-center gap-4">
               <SignedOut>
+                <Button variant="outline" asChild>
+                  <Link href="/game">Play as guest</Link>
+                </Button>
                 <Button asChild>
                   <Link href="/sign-up">Get Started</Link>
                 </Button>

@@ -1,4 +1,7 @@
 import englishWords from "@/data/languages/english.json";
+import contractionsData from "@/data/languages/english_common_contractions.json";
+
+const contractions = contractionsData.words as string[];
 
 export function generateWords(count: number): string {
   const words: string[] = [];
@@ -10,18 +13,55 @@ export function generateWords(count: number): string {
 }
 
 export function addPunctuation(text: string): string {
-  const sentences = text.split(" ");
+  let words = text.split(" ");
+
+  // Replace ~8% of words with contractions (words with apostrophes)
+  const contractionRate = 0.08;
+  words = words.map((word) =>
+    Math.random() < contractionRate
+      ? contractions[Math.floor(Math.random() * contractions.length)]
+      : word
+  );
+
   let result = "";
-  for (let i = 0; i < sentences.length; i++) {
-    result += sentences[i];
-    if (i < sentences.length - 1) {
-      const random = Math.random();
-      if (random < 0.1) result += ",";
-      else if (random < 0.15) result += ".";
+  let nextWordCapitalized = true; // first word capitalized
+
+  for (let i = 0; i < words.length; i++) {
+    let word = words[i];
+
+    // Capitalize at start of sentence (first word or after . ? !)
+    if (nextWordCapitalized && word.length > 0) {
+      word = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      nextWordCapitalized = false;
+    }
+
+    // Wrap ~2% of words in double quotes
+    const wrapInQuotes = Math.random() < 0.02;
+    if (wrapInQuotes) result += '"';
+    result += word;
+    if (wrapInQuotes) result += '"';
+
+    if (i < words.length - 1) {
+      const r = Math.random();
+      let punct = "";
+      // Punctuation probabilities (cumulative): , . ; : ? ! -
+      if (r < 0.05) punct = ",";
+      else if (r < 0.09) punct = ".";
+      else if (r < 0.11) punct = ";";
+      else if (r < 0.13) punct = ":";
+      else if (r < 0.15) punct = "?";
+      else if (r < 0.17) punct = "!";
+      else if (r < 0.18) punct = " -";
+
+      if (punct === "." || punct === "?" || punct === "!") {
+        nextWordCapitalized = true;
+      }
+
+      result += punct;
       result += " ";
     }
   }
-  return result + ".";
+  return result.trimEnd() + ".";
 }
 
 export function addNumbers(text: string): string {

@@ -37,7 +37,8 @@ export function getLastKeystrokeCorrectness(
       const wordBeforeClean = isWordBeforeSpaceFullyCorrect(
         alignment,
         displayText,
-        cell.index
+        cell.index,
+        cell.inputIndex ?? lastInputIndex
       );
       return wordBeforeClean ? "correct" : "incorrect";
     }
@@ -50,11 +51,13 @@ export function getLastKeystrokeCorrectness(
 /**
  * True if the prompt word that ends just before the space at spacePromptIndex
  * was typed fully correctly (no wrong/skipped/extra in that word).
+ * spaceInputIndex: the input index of the space character.
  */
 function isWordBeforeSpaceFullyCorrect(
   alignment: AlignmentResult,
   displayText: string,
-  spacePromptIndex: number
+  spacePromptIndex: number,
+  spaceInputIndex: number
 ): boolean {
   const wordStart =
     displayText.lastIndexOf(" ", spacePromptIndex - 1) + 1;
@@ -88,6 +91,8 @@ function isWordBeforeSpaceFullyCorrect(
 
   for (const ei of extraInputIndices) {
     if (ei >= minIn && ei <= maxIn) return false;
+    // Extra chars between word end and space (e.g. "helloX ") make word dirty
+    if (ei > maxIn && ei < spaceInputIndex) return false;
   }
 
   return true;

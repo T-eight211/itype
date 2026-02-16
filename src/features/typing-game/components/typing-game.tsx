@@ -22,7 +22,7 @@ import {
   computeAccuracy,
 } from "../lib/accuracy";
 import { generateWords, addNumbers, addPunctuation } from "../lib/prompt";
-import { buildQuotableRandomUrl } from "../lib/quotes";
+import { fetchQuote } from "../lib/quotes";
 
 export function TypingGame() {
   const [mode, setMode] = useState<"time" | "words" | "quote">("time");
@@ -92,14 +92,7 @@ export function TypingGame() {
     timerDuration,
   ]);
 
-  // Monkeytype-style "clean word" counting:
-  // - Split prompt and input into words.
-  // - A word contributes typed.length while `typed` is a prefix of target and not longer than target.
-  // - As soon as a wrong/extra character appears (typed is not a prefix or too long), that word
-  //   contributes 0. If the user backspaces so `typed` becomes a valid prefix again, it starts counting again.
-  // - Optionally we count a space after a word only when both:
-  //     * the full word is typed (typed.length === target.length)
-  //     * the user actually typed a space after it in rawInput.
+ 
   const getCorrectCharsSoFar = React.useCallback(
     (prompt: string, input: string): number => {
       if (!prompt || !input) return 0;
@@ -116,20 +109,20 @@ export function TypingGame() {
 
         if (!typed) continue;
 
-        // Dirty word: wrong character or too long -> 0 contribution.
+
         if (typed.length > target.length || !target.startsWith(typed)) {
           continue;
         }
 
-        // Clean word: typed is a proper prefix of target (or equal to target).
-        total += typed.length;
-
-        // Count trailing space only if:
-        // - this word exists in the prompt (i < targetWords.length - 1 => there is a space)
-        // - the user actually typed a space after this word (i < typedWords.length - 1)
-        // - and the word is fully typed (typed === target).
-        const targetHasSpaceAfter = i < targetWords.length - 1;
         const userTypedSpaceAfter = i < typedWords.length - 1;
+        const targetHasSpaceAfter = i < targetWords.length - 1;
+
+        if (userTypedSpaceAfter && typed.length < target.length) {
+          continue;
+        }
+
+
+        total += typed.length;
         if (targetHasSpaceAfter && userTypedSpaceAfter && typed.length === target.length) {
           total += 1;
         }
@@ -151,6 +144,16 @@ export function TypingGame() {
     return currentSeconds;
   }, [mode, timerDuration, startTime, elapsedSeconds]);
 
+  // Raw WPM: (typed chars - extra chars) / 5 / minutes. Includes correct + wrong, excludes skipped + extra.
+  const rawWpm = React.useMemo(() => {
+    const extraCount = alignment.cells.filter(
+      (c) => c.type === "extra"
+    ).length;
+    const rawChars = Math.max(0, rawInput.length - extraCount);
+    const minutes = elapsedSeconds / 60;
+    return minutes > 0 ? (rawChars / 5) / minutes : 0;
+  }, [alignment.cells, rawInput.length, elapsedSeconds]);
+
   const measureStr = React.useMemo(
     () =>
       alignment.cells
@@ -167,6 +170,15 @@ export function TypingGame() {
       setIsInputFocused(true);
     }
   }, []);
+
+  // Auto-focus textarea when settings change so blinker is active and ready to type
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      setIsInputFocused(true);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [mode, wordCount, timerDuration, quoteLength, punctuation, numbers]);
 
   useEffect(() => {
     if (!startTime && rawInput.length > 0) {
@@ -260,12 +272,7 @@ export function TypingGame() {
 
       const loadQuote = async () => {
         try {
-          const url = buildQuotableRandomUrl(quoteLength);
-          const res = await fetch(url);
-          if (!res.ok) {
-            throw new Error(`Failed to fetch quote: ${res.status}`);
-          }
-          const data: { content?: string } = await res.json();
+          const data = await fetchQuote(quoteLength);
           if (!isCancelled) {
             setDisplayText(data.content || "Failed to load quote.");
             setRawInput("");
@@ -637,6 +644,21 @@ export function TypingGame() {
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
+                // Enter on partial last word = skip chars, count as incorrect
+                if (
+                  !isGameEnded &&
+                  displayText.length > 0 &&
+                  rawInput.length > 0 &&
+                  !isLastWordCorrect
+                ) {
+                  const lastWordStart =
+                    displayText.lastIndexOf(" ") + 1;
+                  const inLastWord =
+                    alignment.promptCursor >= lastWordStart;
+                  if (inLastWord) {
+                    setIncorrectKeystrokes((c) => c + 1);
+                  }
+                }
               }
             }}
             onPaste={(e) => e.preventDefault()}
@@ -678,9 +700,24 @@ export function TypingGame() {
               </span>
             </HoverCardContent>
           </HoverCard>
-          <span className="text-xs text-muted-foreground mt-1">
-            {correctCharsSoFar} chars
-          </span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-xs uppercase tracking-wider">Raw WPM</span>
+          <HoverCard openDelay={50} closeDelay={100}>
+            <HoverCardTrigger asChild>
+              <span className="text-3xl font-bold text-foreground cursor-default">
+                {Math.max(0, Math.round(rawWpm))}
+              </span>
+            </HoverCardTrigger>
+            <HoverCardContent className="flex w-48 flex-col gap-1">
+              <span className="text-sm font-mono">
+                {rawWpm.toFixed(2)} raw wpm
+              </span>
+              <span className="text-sm font-mono text-muted-foreground">
+                (typed - extra) ÷ 5 ÷ time
+              </span>
+            </HoverCardContent>
+          </HoverCard>
         </div>
         <div className="flex flex-col items-center">
           <span className="text-xs uppercase tracking-wider">Accuracy</span>
@@ -740,6 +777,14 @@ export function TypingGame() {
           <div>
             <span className="text-muted-foreground">input length:</span>{" "}
             {alignment.inputCursor}
+          </div>
+          <div>
+            <span className="text-muted-foreground">raw chars:</span>{" "}
+            {Math.max(0, rawInput.length - alignment.cells.filter((c) => c.type === "extra").length)}
+          </div>
+          <div>
+            <span className="text-muted-foreground">chars (correct):</span>{" "}
+            {correctCharsSoFar}
           </div>
           <div>
             <span className="text-muted-foreground">checkpointInputIndex:</span>{" "}
