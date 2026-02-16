@@ -233,6 +233,7 @@ export function computeCorrectCharsForWpm(
     const spaceCell = promptCellByIndex.get(spaceIdx);
     if (
       spaceCell &&
+      spaceCell.type === "prompt" &&
       displayText[spaceIdx] === " " &&
       spaceCell.status === "correct" &&
       spaceCell.inputIndex != null
