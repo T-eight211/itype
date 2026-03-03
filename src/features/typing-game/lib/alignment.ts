@@ -33,7 +33,6 @@ export function computeAlignment(prompt: string, input: string): AlignmentResult
         cells.push({ type: "prompt", index: pi, inputIndex: ii, status: "correct" });
         pi++;
       } else {
-        // Last word: space after partial word has no matching prompt space; count as extra (incorrect)
         cells.push({ type: "extra", inputIndex: ii, char: c });
       }
       ii++;

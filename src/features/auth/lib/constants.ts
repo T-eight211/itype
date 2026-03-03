@@ -1,7 +1,3 @@
-/**
- * Auth-related constants
- */
-
 export const AUTH_REDIRECT_URLS = {
   GOOGLE_SIGNUP: "/sso-callback?flow=signup",
   GOOGLE_LOGIN: "/sso-callback?flow=login",

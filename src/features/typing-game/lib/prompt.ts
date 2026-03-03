@@ -15,7 +15,7 @@ export function generateWords(count: number): string {
 export function addPunctuation(text: string): string {
   let words = text.split(" ");
 
-  // Replace ~8% of words with contractions (words with apostrophes)
+  
   const contractionRate = 0.08;
   words = words.map((word) =>
     Math.random() < contractionRate
@@ -24,18 +24,18 @@ export function addPunctuation(text: string): string {
   );
 
   let result = "";
-  let nextWordCapitalized = true; // first word capitalized
+  let nextWordCapitalized = true; 
 
   for (let i = 0; i < words.length; i++) {
     let word = words[i];
 
-    // Capitalize at start of sentence (first word or after . ? !)
+
     if (nextWordCapitalized && word.length > 0) {
       word = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
       nextWordCapitalized = false;
     }
 
-    // Wrap ~2% of words in double quotes
+ 
     const wrapInQuotes = Math.random() < 0.02;
     if (wrapInQuotes) result += '"';
     result += word;
@@ -44,7 +44,6 @@ export function addPunctuation(text: string): string {
     if (i < words.length - 1) {
       const r = Math.random();
       let punct = "";
-      // Punctuation probabilities (cumulative): , . ; : ? ! -
       if (r < 0.05) punct = ",";
       else if (r < 0.09) punct = ".";
       else if (r < 0.11) punct = ";";

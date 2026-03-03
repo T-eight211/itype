@@ -121,7 +121,6 @@
   }
 }
 
-/* Typing game textarea: hide selection highlight so invisible text doesn't show blue when selected */
 .typing-input-no-select::selection {
   background: transparent;
   color: transparent;

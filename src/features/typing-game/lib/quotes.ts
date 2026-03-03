@@ -1,6 +1,5 @@
 export type QuoteLengthFilter = "all" | "short" | "medium" | "long" | "thicc";
 
-/** Response shape expected by the typing game (matches quotable API content field). */
 export type QuoteResult = { content: string };
 
 type LocalQuote = { text: string; source: string; length: number; id: number };

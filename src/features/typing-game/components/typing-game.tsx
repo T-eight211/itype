@@ -23,6 +23,7 @@ import {
 } from "../lib/accuracy";
 import { generateWords, addNumbers, addPunctuation } from "../lib/prompt";
 import { fetchQuote } from "../lib/quotes";
+import { computeConsistency, mean, stdDev } from "../lib/stats";
 
 export function TypingGame() {
   const [mode, setMode] = useState<"time" | "words" | "quote">("time");
@@ -41,13 +42,20 @@ export function TypingGame() {
   const [correctCharsSoFar, setCorrectCharsSoFar] = useState(0);
   const [correctKeystrokes, setCorrectKeystrokes] = useState(0);
   const [incorrectKeystrokes, setIncorrectKeystrokes] = useState(0);
+  const [burstWpm, setBurstWpm] = useState<number[]>([]);
+  const [consistency, setConsistency] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
   const wrapContainerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const lastScrollAnchorRef = useRef<number | null>(null);
+  const previousCursorTopRef = useRef<number | null>(null);
+  const previousCursorIndexRef = useRef<number>(-1);
   const displayTextRef = useRef<string>("");
   const rawInputRef = useRef<string>("");
+  const lastBurstTickRef = useRef<number>(-1);
+  const rawInputLengthAtLastTickRef = useRef<number>(0);
+  const keysPressedThisSecondRef = useRef<number>(0);
+  const startPerformanceTimeRef = useRef<number>(0);
 
   const alignment = React.useMemo(
     () => computeAlignment(displayText, rawInput),
@@ -57,6 +65,26 @@ export function TypingGame() {
   const checkpointInputIndex = React.useMemo(() => {
     return computeCheckpointInputIndex(alignment, displayText, rawInput);
   }, [alignment, displayText, rawInput]);
+
+  const completedWordsCount = React.useMemo(() => {
+    if (!displayText || !rawInput) return 0;
+    const words = displayText.split(" ").filter(Boolean);
+    if (words.length === 0) return 0;
+    let pos = 0;
+    let completed = 0;
+    for (let i = 0; i < words.length; i++) {
+      const wordLen = words[i]!.length;
+      const charsToComplete = i < words.length - 1 ? wordLen + 1 : wordLen;
+      if (alignment.promptCursor >= pos + charsToComplete) completed++;
+      pos += charsToComplete;
+    }
+    return completed;
+  }, [displayText, rawInput, alignment.promptCursor]);
+
+  const totalWordsCount = React.useMemo(
+    () => displayText.split(" ").filter(Boolean).length,
+    [displayText]
+  );
 
   const isLastWordCorrect = React.useMemo(
     () => computeIsLastWordFullyCorrect(alignment, displayText),
@@ -79,6 +107,7 @@ export function TypingGame() {
       }
     }
 
+    if (mode === "time") return timeExpired;
     return promptFinished || timeExpired;
   }, [
     displayText.length,
@@ -144,7 +173,6 @@ export function TypingGame() {
     return currentSeconds;
   }, [mode, timerDuration, startTime, elapsedSeconds]);
 
-  // Raw WPM: (typed chars - extra chars) / 5 / minutes. Includes correct + wrong, excludes skipped + extra.
   const rawWpm = React.useMemo(() => {
     const extraCount = alignment.cells.filter(
       (c) => c.type === "extra"
@@ -171,7 +199,6 @@ export function TypingGame() {
     }
   }, []);
 
-  // Auto-focus textarea when settings change so blinker is active and ready to type
   useEffect(() => {
     const id = requestAnimationFrame(() => {
       textareaRef.current?.focus();
@@ -182,7 +209,11 @@ export function TypingGame() {
 
   useEffect(() => {
     if (!startTime && rawInput.length > 0) {
-      setStartTime(Date.now());
+      const now = Date.now();
+      setStartTime(now);
+      startPerformanceTimeRef.current = performance.now();
+      lastBurstTickRef.current = -1;
+      rawInputLengthAtLastTickRef.current = 0;
     }
   }, [rawInput, startTime]);
 
@@ -200,7 +231,18 @@ export function TypingGame() {
     const intervalId = window.setInterval(() => {
       const now = Date.now();
       const seconds = (now - startTime) / 1000;
-      
+      const currentTick = Math.floor(seconds);
+      const rawLen = rawInputRef.current.length;
+
+      if (currentTick > lastBurstTickRef.current) {
+        const keysPressed = keysPressedThisSecondRef.current;
+        const burst = Math.round((keysPressed / 5) * 60);
+        setBurstWpm((prev) => [...prev, burst]);
+        keysPressedThisSecondRef.current = 0;
+        rawInputLengthAtLastTickRef.current = rawLen;
+        lastBurstTickRef.current = currentTick;
+      }
+
       if (mode === "time") {
         const limit = parseInt(timerDuration, 10);
         if (!Number.isNaN(limit) && seconds >= limit) {
@@ -216,7 +258,7 @@ export function TypingGame() {
           return;
         }
       }
-      
+
       setElapsedSeconds(seconds);
 
       const correct = getCorrectCharsSoFar(displayTextRef.current, rawInputRef.current);
@@ -243,12 +285,41 @@ export function TypingGame() {
         const minutes = finalSeconds / 60;
         setWpm((correct / 5) / minutes);
       }
+
+      if (mode === "time") {
+        const limit = parseInt(timerDuration, 10);
+        const expectedBursts = Number.isNaN(limit) ? 0 : limit;
+        const keysPressed = keysPressedThisSecondRef.current;
+        const finalBurst = Math.round((keysPressed / 5) * 60);
+        setBurstWpm((prev) => {
+          const withFinal =
+            prev.length < expectedBursts ? [...prev, finalBurst] : prev;
+          setConsistency(computeConsistency(withFinal));
+          return withFinal;
+        });
+      } else {
+        const elapsedMs = performance.now() - startPerformanceTimeRef.current;
+        const totalSeconds = elapsedMs / 1000;
+        const partialSeconds = totalSeconds % 1;
+        const keysPressed = keysPressedThisSecondRef.current;
+        let finalBurst: number;
+        if (partialSeconds < 0.5) {
+          finalBurst = Math.round((keysPressed / 5) * 60);
+        } else {
+          finalBurst = Math.round((keysPressed / 5) * (60 / partialSeconds));
+        }
+        setBurstWpm((prev) => {
+          const withFinal = [...prev, finalBurst];
+          setConsistency(computeConsistency(withFinal));
+          return withFinal;
+        });
+      }
     }
-  }, [isGameEnded, startTime, displayText, rawInput, getCorrectCharsSoFar]);
+  }, [isGameEnded, startTime, mode, timerDuration, displayText, rawInput, getCorrectCharsSoFar]);
 
   useEffect(() => {
     if (mode === "time" || mode === "words") {
-      const count = mode === "words" ? parseInt(wordCount) : 50;
+      const count = mode === "words" ? parseInt(wordCount) : 100;
       let text = generateWords(count);
       
       if (numbers) {
@@ -267,6 +338,11 @@ export function TypingGame() {
       setCorrectCharsSoFar(0);
       setCorrectKeystrokes(0);
       setIncorrectKeystrokes(0);
+      setBurstWpm([]);
+      setConsistency(null);
+      lastBurstTickRef.current = -1;
+      rawInputLengthAtLastTickRef.current = 0;
+      keysPressedThisSecondRef.current = 0;
     } else if (mode === "quote") {
       let isCancelled = false;
 
@@ -281,7 +357,8 @@ export function TypingGame() {
             setWpm(0);
             setCorrectCharsSoFar(0);
             setCorrectKeystrokes(0);
-            setIncorrectKeystrokes(0);
+            setBurstWpm([]);
+            setConsistency(null);
           }
         } catch {
           if (!isCancelled) {
@@ -292,6 +369,8 @@ export function TypingGame() {
             setWpm(0);
             setCorrectCharsSoFar(0);
             setCorrectKeystrokes(0);
+            setBurstWpm([]);
+            setConsistency(null);
             setIncorrectKeystrokes(0);
           }
         }
@@ -303,7 +382,20 @@ export function TypingGame() {
         isCancelled = true;
       };
     }
-  }, [mode, wordCount, punctuation, numbers, quoteLength]);
+  }, [mode, wordCount, timerDuration, punctuation, numbers, quoteLength]);
+
+  useEffect(() => {
+    if (mode !== "time" || !startTime || isGameEnded || displayText.length === 0) return;
+    const remainingChars = displayText.length - alignment.promptCursor;
+    const threshold = 150;
+    if (remainingChars < threshold) {
+      let batch = generateWords(100);
+      if (numbers) batch = addNumbers(batch);
+      if (punctuation) batch = addPunctuation(batch);
+      setDisplayText((prev) => prev + (prev.endsWith(" ") ? "" : " ") + batch);
+      previousCursorTopRef.current = null;
+    }
+  }, [mode, startTime, isGameEnded, displayText.length, alignment.promptCursor, numbers, punctuation]);
 
   const runMeasure = useCallback(() => {
     const measureEl = measureRef.current;
@@ -351,51 +443,61 @@ export function TypingGame() {
   useLayoutEffect(() => {
     const el = scrollContainerRef.current;
     if (el) el.scrollTop = 0;
-  }, [displayText]);
+    previousCursorTopRef.current = null;
+    previousCursorIndexRef.current = -1;
+  }, [mode, wordCount, timerDuration, quoteLength, punctuation, numbers]);
 
-  const sortedLineBreaks = React.useMemo(
-    () => Array.from(lineBreakIndices).sort((a, b) => a - b),
-    [lineBreakIndices]
-  );
   useLayoutEffect(() => {
-    if (sortedLineBreaks.length < 2) return;
-    const startOfLine3 = sortedLineBreaks[1];
+    const measureEl = measureRef.current;
+    const scrollEl = scrollContainerRef.current;
+    if (!measureEl || !scrollEl || !measureStr) return;
+    const textNode = measureEl.firstChild;
+    if (!textNode || textNode.nodeType !== Node.TEXT_NODE) return;
+
     const cursorMeasureIndex =
       alignment.cursorCellIndex < 0 ? 0 : alignment.cursorCellIndex;
-    const hasScrolledForThisRegion = lastScrollAnchorRef.current === startOfLine3;
+    const safeIndex = Math.min(cursorMeasureIndex, measureStr.length);
 
-    if (cursorMeasureIndex <= startOfLine3) {
-      if (cursorMeasureIndex < startOfLine3) {
-        lastScrollAnchorRef.current = null;
-      }
+    if (safeIndex >= measureStr.length) return;
+
+    const range = document.createRange();
+    range.setStart(textNode, safeIndex);
+    range.setEnd(textNode, safeIndex + 1);
+    const rect = range.getBoundingClientRect();
+    const newCursorTop = rect.top;
+
+    const threshold = 2;
+    const lineHeight = scrollEl.offsetHeight / 3;
+    const scrollRect = scrollEl.getBoundingClientRect();
+    const cursorOnOrPastBottomLine = newCursorTop >= scrollRect.bottom - lineHeight - threshold;
+
+    if (cursorMeasureIndex === 0) {
+      previousCursorTopRef.current = newCursorTop;
+      previousCursorIndexRef.current = 0;
       return;
     }
 
-    if (hasScrolledForThisRegion) return;
+    const prevTop = previousCursorTopRef.current;
+    const prevIndex = previousCursorIndexRef.current;
+    const movedForward = cursorMeasureIndex > prevIndex;
 
-    if (cursorMeasureIndex === startOfLine3 + 1 && measureStr.length > startOfLine3) {
-      const charBeforeCursor = measureStr[startOfLine3];
-      if (charBeforeCursor === " " && lineBreakIndices.has(startOfLine3)) {
-        return;
-      }
+    if (!movedForward) {
+      return;
     }
 
-    const measureEl = measureRef.current;
-    const scrollEl = scrollContainerRef.current;
-    if (!measureEl || !scrollEl) return;
-    const textNode = measureEl.firstChild;
-    if (!textNode || textNode.nodeType !== Node.TEXT_NODE) return;
-    const startOfLine2 = sortedLineBreaks[0];
-    if (startOfLine2 >= measureStr.length) return;
-    const range = document.createRange();
-    range.setStart(textNode, startOfLine2);
-    range.setEnd(textNode, startOfLine2 + 1);
-    const charRect = range.getBoundingClientRect();
-    const scrollRect = scrollEl.getBoundingClientRect();
-    const offset = charRect.top - scrollRect.top + scrollEl.scrollTop;
-    scrollEl.scrollTop = Math.max(0, offset);
-    lastScrollAnchorRef.current = startOfLine3;
-  }, [alignment.cursorCellIndex, measureStr.length, sortedLineBreaks, measureStr, lineBreakIndices]);
+    previousCursorTopRef.current = newCursorTop;
+    previousCursorIndexRef.current = cursorMeasureIndex;
+
+    const movedDown = prevTop !== null && newCursorTop > prevTop + threshold;
+
+    if (movedDown && cursorOnOrPastBottomLine) {
+      scrollEl.scrollTop = Math.min(
+        scrollEl.scrollHeight - scrollEl.clientHeight,
+        scrollEl.scrollTop + lineHeight
+      );
+    }
+
+  }, [alignment.cursorCellIndex, measureStr]);
 
   useLayoutEffect(() => {
     const el = textareaRef.current;
@@ -481,7 +583,6 @@ export function TypingGame() {
           className="relative w-full min-h-18 select-none cursor-default"
           dir="ltr"
           onMouseDown={(e) => {
-            // Always focus the hidden textarea when clicking anywhere in the typing area
             e.preventDefault();
             textareaRef.current?.focus();
           }}
@@ -512,7 +613,11 @@ export function TypingGame() {
               "text-xl md:text-2xl leading-relaxed font-mono text-left w-full cursor-default",
               "whitespace-pre-wrap"
             )}
-            style={{ wordBreak: "keep-all", overflowWrap: "break-word" }}
+            style={{
+              wordBreak: "keep-all",
+              overflowWrap: "break-word",
+              minHeight: "calc(4 * 1.625 * 1em)",
+            }}
           >
             {(() => {
               const getClass = (cell: AlignmentCell) => {
@@ -614,6 +719,13 @@ export function TypingGame() {
               let next = e.target.value;
               next = next.replace(/\n/g, "");
 
+              // Block leading space (can't skip first word without typing)
+              if (next === " " && rawInput === "") {
+                e.preventDefault();
+                if (textareaRef.current) textareaRef.current.value = rawInput;
+                return;
+              }
+              // Block double space (can't skip next word without typing)
               if (next.length > rawInput.length && rawInput.endsWith(" ") && next.endsWith(" ")) {
                 e.preventDefault();
                 if (textareaRef.current) textareaRef.current.value = rawInput;
@@ -626,6 +738,7 @@ export function TypingGame() {
                 return;
               }
               if (next.length > rawInput.length) {
+                keysPressedThisSecondRef.current += next.length - rawInput.length;
                 for (let i = rawInput.length; i < next.length; i++) {
                   const partial = next.slice(0, i + 1);
                   const correctness = getLastKeystrokeCorrectness(
@@ -644,7 +757,6 @@ export function TypingGame() {
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                // Enter on partial last word = skip chars, count as incorrect
                 if (
                   !isGameEnded &&
                   displayText.length > 0 &&
@@ -702,7 +814,7 @@ export function TypingGame() {
           </HoverCard>
         </div>
         <div className="flex flex-col items-center">
-          <span className="text-xs uppercase tracking-wider">Raw WPM</span>
+          <span className="text-xs uppercase tracking-wider">Raw</span>
           <HoverCard openDelay={50} closeDelay={100}>
             <HoverCardTrigger asChild>
               <span className="text-3xl font-bold text-foreground cursor-default">
@@ -711,10 +823,7 @@ export function TypingGame() {
             </HoverCardTrigger>
             <HoverCardContent className="flex w-48 flex-col gap-1">
               <span className="text-sm font-mono">
-                {rawWpm.toFixed(2)} raw wpm
-              </span>
-              <span className="text-sm font-mono text-muted-foreground">
-                (typed - extra) ÷ 5 ÷ time
+                {rawWpm.toFixed(2)} wpm
               </span>
             </HoverCardContent>
           </HoverCard>
@@ -738,12 +847,26 @@ export function TypingGame() {
                 ).toFixed(2)}
                 %
               </span>
-              <span className="text-sm font-mono text-muted-foreground">
-                {correctKeystrokes} correct / {incorrectKeystrokes} incorrect
-              </span>
             </HoverCardContent>
           </HoverCard>
         </div>
+        {consistency !== null && (
+          <div className="flex flex-col items-center">
+            <span className="text-xs uppercase tracking-wider">Consistency</span>
+            <HoverCard openDelay={50} closeDelay={100}>
+              <HoverCardTrigger asChild>
+                <span className="text-3xl font-bold text-foreground cursor-default">
+                  {Math.round(consistency)}%
+                </span>
+              </HoverCardTrigger>
+              <HoverCardContent className="flex w-32 flex-col items-center">
+                <span className="text-sm font-mono">
+                  {consistency.toFixed(2)}%
+                </span>
+              </HoverCardContent>
+            </HoverCard>
+          </div>
+        )}
         <div className="flex flex-col items-center">
           <span className="text-xs uppercase tracking-wider">Time</span>
           <HoverCard openDelay={50} closeDelay={100}>
@@ -759,10 +882,12 @@ export function TypingGame() {
             </HoverCardContent>
           </HoverCard>
         </div>
-        {mode === "words" && (
+        {(mode === "words" || mode === "quote") && (
           <div className="flex flex-col items-center">
             <span className="text-xs uppercase tracking-wider">Progress</span>
-            <span className="text-3xl font-bold text-foreground">0/{wordCount}</span>
+            <span className="text-3xl font-bold text-foreground">
+              {completedWordsCount}/{totalWordsCount}
+            </span>
           </div>
         )}
       </div>
@@ -802,6 +927,28 @@ export function TypingGame() {
             <span className="text-muted-foreground">accuracy:</span>{" "}
             {correctKeystrokes} correct / {incorrectKeystrokes} incorrect
           </div>
+          {burstWpm.length > 0 && (
+            <>
+              <div>
+                <span className="text-muted-foreground">burstWpm:</span>{" "}
+                [{burstWpm.join(", ")}]
+              </div>
+              <div>
+                <span className="text-muted-foreground">burst mean:</span>{" "}
+                {mean(burstWpm).toFixed(2)}
+              </div>
+              <div>
+                <span className="text-muted-foreground">burst stdDev:</span>{" "}
+                {stdDev(burstWpm).toFixed(2)}
+              </div>
+              <div>
+                <span className="text-muted-foreground">burst CV:</span>{" "}
+                {mean(burstWpm) === 0
+                  ? "—"
+                  : (stdDev(burstWpm) / mean(burstWpm)).toFixed(4)}
+              </div>
+            </>
+          )}
         </div>
       </div>
 

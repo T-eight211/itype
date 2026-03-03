@@ -14,7 +14,6 @@ export function useResetPassword() {
   const [passwordError, setPasswordError] = useState<string>("")
   const [secondFactor, setSecondFactor] = useState(false)
 
-  // Redirect if not in correct reset flow
   useEffect(() => {
     if (isLoaded && signIn) {
       if (signIn.status !== "needs_first_factor") {
@@ -35,12 +34,10 @@ export function useResetPassword() {
       return false
     }
 
-    // Clear previous errors
     setCodeError("")
     setPasswordError("")
     setError("")
 
-    // Validate inputs
     const codeValidationError = validateCode(code)
     if (codeValidationError) {
       setCodeError(codeValidationError)

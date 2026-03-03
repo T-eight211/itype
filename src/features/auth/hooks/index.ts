@@ -1,7 +1,3 @@
-/**
- * Auth hooks barrel export
- */
-
 export { useAuthRedirect } from "./use-auth-redirect"
 export { useLogin } from "./use-login"
 export { useSignup } from "./use-signup"

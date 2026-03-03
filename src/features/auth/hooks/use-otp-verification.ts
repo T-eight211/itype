@@ -11,7 +11,6 @@ export function useOTPVerification() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string>("")
 
-  // Redirect if not in correct signup flow
   useEffect(() => {
     if (isLoaded) {
       if (!signUp || signUp.status === null || signUp.status !== "missing_requirements") {

@@ -11,7 +11,6 @@ interface SSOCallbackHandlerProps {
 export function SSOCallbackHandler({ flow, continueSignUp }: SSOCallbackHandlerProps) {
   const { isProcessing } = useSSOCallback(flow)
 
-  // Sign-up flow - don't transfer to sign-in
   if (flow === "signup") {
     console.log("📝 SSO Callback - Using AuthenticateWithRedirectCallback for sign-up flow with transferable=false")
     return (
@@ -26,7 +25,6 @@ export function SSOCallbackHandler({ flow, continueSignUp }: SSOCallbackHandlerP
     )
   }
 
-  // Login flow - can transfer to sign-up
   if (flow === "login" && !continueSignUp) {
     console.log("🔐 SSO Callback - Using AuthenticateWithRedirectCallback for login flow with transferable=true")
     return (
@@ -41,7 +39,6 @@ export function SSOCallbackHandler({ flow, continueSignUp }: SSOCallbackHandlerP
     )
   }
 
-  // Default loading state
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center">

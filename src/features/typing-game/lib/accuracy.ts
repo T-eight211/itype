@@ -1,17 +1,5 @@
 import { computeAlignment, type AlignmentResult, type AlignmentCell } from "./alignment";
 
-/**
- * Whether the last typed character (at input.length - 1) counts as correct or incorrect
- * for accuracy. Used to update cumulative correct/incorrect keystroke counts.
- *
- * Rules:
- * - Wrong character -> incorrect
- * - Extra character -> incorrect
- * - Space after a dirty (incorrect) word -> incorrect
- * - Space after a fully correct word -> correct
- * - Correct character (including retyped correct) -> correct
- * - Missed characters are not counted (we only classify the last *typed* character)
- */
 export function getLastKeystrokeCorrectness(
   displayText: string,
   input: string
@@ -48,11 +36,6 @@ export function getLastKeystrokeCorrectness(
   return null;
 }
 
-/**
- * True if the prompt word that ends just before the space at spacePromptIndex
- * was typed fully correctly (no wrong/skipped/extra in that word).
- * spaceInputIndex: the input index of the space character.
- */
 function isWordBeforeSpaceFullyCorrect(
   alignment: AlignmentResult,
   displayText: string,
@@ -91,17 +74,12 @@ function isWordBeforeSpaceFullyCorrect(
 
   for (const ei of extraInputIndices) {
     if (ei >= minIn && ei <= maxIn) return false;
-    // Extra chars between word end and space (e.g. "helloX ") make word dirty
     if (ei > maxIn && ei < spaceInputIndex) return false;
   }
 
   return true;
 }
 
-/**
- * Accuracy = (Correct Characters / (Correct Characters + Incorrect Characters)) × 100.
- * Returns a number in [0, 100], or 100 when both counts are 0.
- */
 export function computeAccuracy(
   correctKeystrokes: number,
   incorrectKeystrokes: number

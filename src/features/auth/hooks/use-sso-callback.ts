@@ -4,13 +4,6 @@ import { useRouter } from "next/navigation"
 import { generateUsername, generateFallbackUsername } from "../lib/username-generator"
 import { AUTH_ROUTES } from "../lib/constants"
 
-/**
- * Handles SSO callback logic including:
- * - Session completion
- * - Username generation for OAuth signups
- * - Retry logic
- * - Polling for session updates
- */
 export function useSSOCallback(flow: string | null) {
   const { signUp, isLoaded: signUpLoaded, setActive: setSignUpActive } = useSignUp()
   const { signIn, isLoaded: signInLoaded, setActive: setSignInActive } = useSignIn()
@@ -19,9 +12,6 @@ export function useSSOCallback(flow: string | null) {
   const [hasProcessed, setHasProcessed] = useState(false)
   const [isProcessing, setIsProcessing] = useState(true)
 
-  /**
-   * Sets username with retry logic
-   */
   const setUsernameWithRetry = async (retryCount = 0): Promise<boolean> => {
     if (!signUp) return false
 
@@ -35,7 +25,6 @@ export function useSSOCallback(flow: string | null) {
 
       const username = generateUsername(userData)
 
-      // Retry if username is invalid
       if ((!username || username.length < 4) && retryCount < 3) {
         await new Promise((resolve) => setTimeout(resolve, 500))
         return setUsernameWithRetry(retryCount + 1)
@@ -43,7 +32,6 @@ export function useSSOCallback(flow: string | null) {
 
       await signUp.update({ username })
 
-      // Check if signup is now complete
       if (signUp.status === "complete") {
         setHasProcessed(true)
         if (signUp.createdSessionId && setSignUpActive) {
@@ -58,7 +46,6 @@ export function useSSOCallback(flow: string | null) {
     } catch (err: any) {
       console.error("Error setting username:", err)
 
-      // Try fallback username with random suffix
       try {
         const userData = {
           firstName: signUp?.firstName,
@@ -85,19 +72,14 @@ export function useSSOCallback(flow: string | null) {
     }
   }
 
-  /**
-   * Handles immediate callback processing
-   */
   const handleImmediateCallback = async () => {
     try {
-      // Already signed in
       if (isSignedIn) {
         setHasProcessed(true)
         window.location.href = AUTH_ROUTES.HOME
         return
       }
 
-      // Sign-in complete
       if (signIn && signIn.status === "complete" && signIn.createdSessionId) {
         setHasProcessed(true)
         await setSignInActive({ session: signIn.createdSessionId })
@@ -106,13 +88,11 @@ export function useSSOCallback(flow: string | null) {
         return
       }
 
-      // Sign-up needs username
       if (signUp && signUp.status === "missing_requirements") {
         await setUsernameWithRetry()
         return
       }
 
-      // Sign-up complete
       if (signUp && signUp.status === "complete") {
         setHasProcessed(true)
 
@@ -138,12 +118,8 @@ export function useSSOCallback(flow: string | null) {
     }
   }
 
-  /**
-   * Polls for session updates with interval
-   */
   const pollForSession = () => {
     const checkInterval = setInterval(async () => {
-      // Already signed in
       if (isSignedIn) {
         clearInterval(checkInterval)
         setHasProcessed(true)
@@ -151,7 +127,6 @@ export function useSSOCallback(flow: string | null) {
         return
       }
 
-      // Sign-in complete
       if (signIn?.status === "complete" && signIn.createdSessionId && setSignInActive) {
         clearInterval(checkInterval)
         setHasProcessed(true)
@@ -161,7 +136,6 @@ export function useSSOCallback(flow: string | null) {
         return
       }
 
-      // Sign-up needs username
       if (signUp && signUp.status === "missing_requirements") {
         const userData = {
           firstName: signUp.firstName,
@@ -188,7 +162,6 @@ export function useSSOCallback(flow: string | null) {
         }
       }
 
-      // Sign-up complete
       if (signUp && signUp.status === "complete") {
         clearInterval(checkInterval)
         setHasProcessed(true)
@@ -205,7 +178,6 @@ export function useSSOCallback(flow: string | null) {
       }
     }, 500)
 
-    // Timeout after 10 seconds
     setTimeout(() => {
       clearInterval(checkInterval)
       if (!hasProcessed) {
@@ -215,9 +187,6 @@ export function useSSOCallback(flow: string | null) {
     }, 10000)
   }
 
-  /**
-   * Main effect - handles the callback flow
-   */
   useEffect(() => {
     if (!signUpLoaded && !signInLoaded && !authLoaded) return
     if (hasProcessed) return

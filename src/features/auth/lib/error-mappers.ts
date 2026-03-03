@@ -1,7 +1,3 @@
-/**
- * Maps Clerk API errors to user-friendly error messages
- */
-
 export type FieldErrors = {
   [key: string]: string
 }
@@ -55,7 +51,6 @@ export function mapSignupErrors(errors: any[]): {
         fieldErrors.password = "Password is too weak. Please choose a stronger password."
         break
       case "form_identifier_exists":
-        // Check paramName to determine if it's email or username
         if (error.meta?.paramName === "username") {
           fieldErrors.username = "Username is already taken. Please try another."
         } else if (error.meta?.paramName === "email_address") {
@@ -78,16 +73,13 @@ export function mapSignupErrors(errors: any[]): {
         }
         break
       default:
-        // Check paramName FIRST to accurately identify which field has the error
         if (error.meta?.paramName === "username") {
           fieldErrors.username = errorMessage || "Username is invalid or already taken."
         } else if (error.meta?.paramName === "email_address") {
           fieldErrors.email = errorMessage || "Email address is invalid or already taken."
         } else if (error.meta?.paramName === "password") {
           fieldErrors.password = errorMessage || "Password validation failed. Please check your password."
-        }
-        // Then check error codes
-        else if (
+        } else if (
           errorCode.includes("username") ||
           errorMessage.toLowerCase().includes("username")
         ) {
@@ -103,7 +95,6 @@ export function mapSignupErrors(errors: any[]): {
         ) {
           fieldErrors.email = errorMessage || "An error occurred with your email. Please try again."
         } else if (errorCode.includes("identifier")) {
-          // Only check identifier if it's clearly not username-related
           if (!errorMessage.toLowerCase().includes("username")) {
             fieldErrors.email = errorMessage || "Email address is invalid or already taken."
           } else {
@@ -127,12 +118,10 @@ export function mapPasswordResetErrors(errors: any[]): {
   const error = errors[0]
   const errorMessage = error?.longMessage || error?.message || "Invalid code or password. Please try again."
 
-  // Check if it's a code-related error
   if (error?.code === "form_code_incorrect" || errorMessage.toLowerCase().includes("code") || errorMessage.toLowerCase().includes("verification")) {
     return { codeError: errorMessage, passwordError: null, formError: null }
   }
 
-  // Check if it's a password-related error
   if (error?.code?.includes("password") || errorMessage.toLowerCase().includes("password") || errorMessage.toLowerCase().includes("special")) {
     return { codeError: null, passwordError: errorMessage, formError: null }
   }

@@ -1,7 +1,3 @@
-/**
- * Pure validation functions for auth forms
- */
-
 export function validateEmail(email: string): string | null {
   if (!email.trim()) {
     return "Please enter your email address"
