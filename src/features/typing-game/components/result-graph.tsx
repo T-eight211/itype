@@ -21,6 +21,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card"
+import { smoothWithValueWindow } from "@/features/typing-game/utils/smooth-burst"
 
 const chartConfig = {
   views: {
@@ -56,32 +57,48 @@ interface ResultGraphProps {
   incorrectHistory: number[]
   consistency: number | null
   elapsedSeconds: number
+  mode: string
 }
 
-export function ResultGraph({ wpmHistory, rawWpmHistory, burstWpm, wpm, rawWpm, accuracy, correctKeystrokes, incorrectKeystrokes, incorrectHistory, consistency, elapsedSeconds }: ResultGraphProps) {
+export function ResultGraph({ wpmHistory, rawWpmHistory, burstWpm, wpm, rawWpm, accuracy, correctKeystrokes, incorrectKeystrokes, incorrectHistory, consistency, elapsedSeconds, mode }: ResultGraphProps) {
   const [showRaw, setShowRaw] = React.useState(true)
   const [showBurst, setShowBurst] = React.useState(true)
   const [showErrors, setShowErrors] = React.useState(true)
 
-  const chartData = React.useMemo(
-    () =>
-      wpmHistory.map((wpm, i) => ({
-        second: i + 1,
-        wpm,
+  const smoothedBurst = React.useMemo(() => {
+    const valueWindow = Math.max(...burstWpm, 0) * 0.25;
+    return smoothWithValueWindow(burstWpm, 1, valueWindow);
+  }, [burstWpm])
+
+  const chartData = React.useMemo(() => {
+    const partialSecond = elapsedSeconds % 1;
+    const isPartial = mode !== "time" && partialSecond > 0;
+    const dropLast = isPartial && partialSecond < 0.5;
+    const count = dropLast ? wpmHistory.length - 1 : wpmHistory.length;
+
+    const data: { second: number; wpm: number; raw: number; burst: number; errors: number }[] = [];
+    for (let i = 0; i < count; i++) {
+      const isLastAndPartial = isPartial && !dropLast && i === count - 1;
+      data.push({
+        second: isLastAndPartial
+          ? parseFloat((Math.floor(elapsedSeconds) + partialSecond).toFixed(2))
+          : i + 1,
+        wpm: wpmHistory[i] ?? 0,
         raw: rawWpmHistory[i] ?? 0,
-        burst: burstWpm[i] ?? 0,
+        burst: smoothedBurst[i] ?? 0,
         errors: incorrectHistory[i] ?? 0,
-      })),
-    [wpmHistory, rawWpmHistory, burstWpm, incorrectHistory]
-  )
+      });
+    }
+    return data;
+  }, [wpmHistory, rawWpmHistory, smoothedBurst, incorrectHistory, elapsedSeconds, mode])
 
   const yMax = React.useMemo(() => {
     const values = [...wpmHistory]
     if (showRaw) values.push(...rawWpmHistory)
-    if (showBurst) values.push(...burstWpm)
+    if (showBurst) values.push(...smoothedBurst)
     const max = Math.max(0, ...values)
     return Math.ceil(max / 10) * 10
-  }, [wpmHistory, rawWpmHistory, burstWpm, showRaw, showBurst])
+  }, [wpmHistory, rawWpmHistory, smoothedBurst, showRaw, showBurst])
 
   return (
     <Card className="py-4 sm:py-0">
@@ -173,7 +190,7 @@ export function ResultGraph({ wpmHistory, rawWpmHistory, burstWpm, wpm, rawWpm, 
                 className="flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l data-[active=true]:bg-muted/50 sm:border-t-0 sm:border-l sm:px-8 sm:py-6 cursor-default"
               >
                 <span className="text-xs text-muted-foreground">time</span>
-                <span className="text-lg leading-none font-bold sm:text-3xl">{Math.floor(elapsedSeconds)}s</span>
+                <span className="text-lg leading-none font-bold sm:text-3xl">{Math.round(elapsedSeconds)}s</span>
               </div>
             </HoverCardTrigger>
             <HoverCardContent className="flex w-32 flex-col items-center">
@@ -259,6 +276,7 @@ export function ResultGraph({ wpmHistory, rawWpmHistory, burstWpm, wpm, rawWpm, 
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 dot={false}
+                isAnimationActive={false}
               />
             )}
             {showErrors && (

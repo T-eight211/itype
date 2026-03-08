@@ -236,7 +236,7 @@ export function TypingGame() {
 
         <StatItem
           label="Time"
-          value={`${Math.max(0, Math.floor(game.timeDisplaySeconds))}s`}
+          value={`${Math.max(0, Math.round(game.timeDisplaySeconds))}s`}
           hoverValue={`${game.elapsedSeconds.toFixed(2)}s`}
         />
 
@@ -264,6 +264,7 @@ export function TypingGame() {
           incorrectHistory={game.incorrectHistory}
           consistency={game.consistency}
           elapsedSeconds={game.elapsedSeconds}
+          mode={game.mode}
         />
       )}
 
