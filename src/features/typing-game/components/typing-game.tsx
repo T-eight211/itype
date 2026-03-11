@@ -2,8 +2,9 @@
 
 import React from "react";
 import { Separator } from "@/components/ui/separator";
-import { Clock, Type, Quote, Hash, AtSign } from "lucide-react";
+import { Clock, Type, Quote, Hash, AtSign, RotateCcw, Repeat, SkipForward } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   HoverCard,
@@ -117,6 +118,46 @@ export function TypingGame() {
               </ToggleGroupItem>
             </ToggleGroup>
           </>
+        )}
+
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* Test control buttons */}
+        {!game.isGameEnded && (
+          <Button
+            size="icon-sm"
+            variant="outline"
+            onClick={game.restartTest}
+            title="restart test"
+            aria-label="restart test"
+            className="transition-colors hover:bg-muted"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </Button>
+        )}
+
+        {game.isGameEnded && (
+          <div className="flex items-center gap-2">
+            <Button
+              size="icon-sm"
+              variant="outline"
+              onClick={game.retakeTest}
+              title="retake test"
+              aria-label="retake test"
+              className="transition-colors hover:bg-muted"
+            >
+              <Repeat className="w-4 h-4" />
+            </Button>
+            <Button
+              size="icon-sm"
+              onClick={game.nextTest}
+              title="next test"
+              aria-label="next test"
+              className="transition-colors"
+            >
+              <SkipForward className="w-4 h-4" />
+            </Button>
+          </div>
         )}
       </div>
 

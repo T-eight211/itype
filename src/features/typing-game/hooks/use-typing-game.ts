@@ -43,6 +43,9 @@ export function useTypingGame() {
   const [incorrectHistory, setIncorrectHistory] = useState<number[]>([]);
   const [consistency, setConsistency] = useState<number | null>(null);
 
+  // Used to explicitly regenerate a new prompt with the same settings.
+  const [regenKey, setRegenKey] = useState(0);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const displayTextRef = useRef<string>("");
   const rawInputRef = useRef<string>("");
@@ -347,7 +350,7 @@ export function useTypingGame() {
       loadQuote();
       return () => { isCancelled = true; };
     }
-  }, [mode, wordCount, timerDuration, punctuation, numbers, quoteLength, resetState]);
+  }, [mode, wordCount, timerDuration, punctuation, numbers, quoteLength, regenKey, resetState]);
 
   // --- Time mode: append text when running low ---
 
@@ -427,6 +430,25 @@ export function useTypingGame() {
     [isGameEnded, displayText, rawInput, isLastWordCorrect, alignment.promptCursor]
   );
 
+  // --- Public actions ---
+
+  const restartTest = useCallback(() => {
+    // Restart always means: new prompt with current settings.
+    setRegenKey((k) => k + 1);
+  }, []);
+
+  const retakeTest = useCallback(() => {
+    // Retake uses the same prompt text again.
+    const currentText = displayTextRef.current || displayText;
+    if (!currentText) return;
+    resetState(currentText);
+  }, [displayText, resetState]);
+
+  const nextTest = useCallback(() => {
+    // Next test is effectively the same as restart: new prompt.
+    setRegenKey((k) => k + 1);
+  }, []);
+
   return {
     mode, setMode,
     wordCount, setWordCount,
@@ -458,5 +480,9 @@ export function useTypingGame() {
     textareaRef,
     handleInputChange,
     handleKeyDown,
+
+    restartTest,
+    retakeTest,
+    nextTest,
   };
 }
