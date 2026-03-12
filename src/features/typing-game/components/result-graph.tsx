@@ -51,7 +51,10 @@ interface ResultGraphProps {
   burstWpm: number[]
   wpm: number
   rawWpm: number
+  wpmDisplay: string
+  rawWpmDisplay: string
   accuracy: number
+  accuracyDisplay: string
   correctKeystrokes: number
   incorrectKeystrokes: number
   incorrectHistory: number[]
@@ -60,7 +63,7 @@ interface ResultGraphProps {
   mode: string
 }
 
-export function ResultGraph({ wpmHistory, rawWpmHistory, burstWpm, wpm, rawWpm, accuracy, correctKeystrokes, incorrectKeystrokes, incorrectHistory, consistency, elapsedSeconds, mode }: ResultGraphProps) {
+export function ResultGraph({ wpmHistory, rawWpmHistory, burstWpm, wpm, rawWpm, wpmDisplay, rawWpmDisplay, accuracy, accuracyDisplay, correctKeystrokes, incorrectKeystrokes, incorrectHistory, consistency, elapsedSeconds, mode }: ResultGraphProps) {
   const [showRaw, setShowRaw] = React.useState(true)
   const [showBurst, setShowBurst] = React.useState(true)
   const [showErrors, setShowErrors] = React.useState(true)
@@ -119,7 +122,7 @@ export function ResultGraph({ wpmHistory, rawWpmHistory, burstWpm, wpm, rawWpm, 
               </div>
             </HoverCardTrigger>
             <HoverCardContent className="flex w-32 flex-col items-center">
-              <span className="text-sm font-mono">{wpm.toFixed(2)} wpm</span>
+              <span className="text-sm font-mono">{wpmDisplay} wpm</span>
             </HoverCardContent>
           </HoverCard>
           <HoverCard openDelay={50} closeDelay={100}>
@@ -134,7 +137,7 @@ export function ResultGraph({ wpmHistory, rawWpmHistory, burstWpm, wpm, rawWpm, 
               </button>
             </HoverCardTrigger>
             <HoverCardContent className="flex w-32 flex-col items-center">
-              <span className="text-sm font-mono">{rawWpm.toFixed(2)} wpm</span>
+              <span className="text-sm font-mono">{rawWpmDisplay} wpm</span>
             </HoverCardContent>
           </HoverCard>
           <button
@@ -162,7 +165,7 @@ export function ResultGraph({ wpmHistory, rawWpmHistory, burstWpm, wpm, rawWpm, 
               </div>
             </HoverCardTrigger>
             <HoverCardContent className="flex w-40 flex-col gap-1">
-              <span className="text-sm font-mono">{accuracy.toFixed(2)}%</span>
+              <span className="text-sm font-mono">{accuracyDisplay}%</span>
               <span className="text-sm font-mono">{correctKeystrokes} correct</span>
               <span className="text-sm font-mono">{incorrectKeystrokes} incorrect</span>
             </HoverCardContent>

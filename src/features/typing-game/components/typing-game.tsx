@@ -249,8 +249,8 @@ export function TypingGame() {
 
       {/* ── Stats bar ── */}
       <div className="flex items-center justify-center gap-8 text-sm text-muted-foreground">
-        <StatItem label="WPM" value={Math.max(0, Math.round(game.wpm))} hoverValue={`${game.wpm.toFixed(2)} wpm`} />
-        <StatItem label="Raw" value={Math.max(0, Math.round(game.rawWpm))} hoverValue={`${game.rawWpm.toFixed(2)} wpm`} />
+        <StatItem label="WPM" value={Math.max(0, Math.round(game.wpm))} hoverValue={`${game.wpmDisplay} wpm`} />
+        <StatItem label="Raw" value={Math.max(0, Math.round(game.rawWpm))} hoverValue={`${game.rawWpmDisplay} wpm`} />
         <div className="flex flex-col items-center">
           <span className="text-xs uppercase tracking-wider">Accuracy</span>
           <HoverCard openDelay={50} closeDelay={100}>
@@ -260,7 +260,7 @@ export function TypingGame() {
               </span>
             </HoverCardTrigger>
             <HoverCardContent className="flex w-40 flex-col gap-1">
-              <span className="text-sm font-mono">{game.accuracy.toFixed(2)}%</span>
+              <span className="text-sm font-mono">{game.accuracyDisplay}%</span>
               <span className="text-sm font-mono">{game.correctKeystrokes} correct</span>
               <span className="text-sm font-mono">{game.incorrectKeystrokes} incorrect</span>
             </HoverCardContent>
@@ -299,7 +299,10 @@ export function TypingGame() {
           burstWpm={game.burstWpm}
           wpm={game.wpm}
           rawWpm={game.rawWpm}
+          wpmDisplay={game.wpmDisplay}
+          rawWpmDisplay={game.rawWpmDisplay}
           accuracy={game.accuracy}
+          accuracyDisplay={game.accuracyDisplay}
           correctKeystrokes={game.correctKeystrokes}
           incorrectKeystrokes={game.incorrectKeystrokes}
           incorrectHistory={game.incorrectHistory}

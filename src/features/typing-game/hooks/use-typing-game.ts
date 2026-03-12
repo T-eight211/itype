@@ -14,8 +14,9 @@ import {
 import { getLastKeystrokeCorrectness, computeAccuracy } from "../lib/accuracy";
 import { generateWords, addNumbers, addPunctuation } from "../lib/prompt";
 import { fetchQuote } from "../lib/quotes";
-import { computeConsistency } from "../utils/stats";
+import { computeConsistency, formatWpm, roundTo2 } from "../utils/stats";
 import { getCorrectCharsSoFar, charsToWpm, computeRawChars } from "../lib/wpm";
+import { saveTypingResult } from "../server/save-typing-result";
 
 export type GameMode = "time" | "words" | "quote";
 export type QuoteLength = "all" | "short" | "medium" | "long" | "thicc";
@@ -55,6 +56,7 @@ export function useTypingGame() {
   const incorrectAtLastTickRef = useRef<number>(0);
   const incorrectKeystrokesRef = useRef<number>(0);
   const startPerformanceTimeRef = useRef<number>(0);
+  const hasSavedResultRef = useRef(false);
 
   // --- Derived values ---
 
@@ -136,13 +138,17 @@ export function useTypingGame() {
 
   const rawWpm = useMemo(() => {
     const rawChars = computeRawChars(displayText, rawInput);
-    return charsToWpm(rawChars, elapsedSeconds);
+    return roundTo2(charsToWpm(rawChars, elapsedSeconds));
   }, [displayText, rawInput, elapsedSeconds]);
 
+  const wpmDisplay = useMemo(() => formatWpm(wpm), [wpm]);
+  const rawWpmDisplay = useMemo(() => formatWpm(rawWpm), [rawWpm]);
+
   const accuracy = useMemo(
-    () => computeAccuracy(correctKeystrokes, incorrectKeystrokes),
+    () => roundTo2(computeAccuracy(correctKeystrokes, incorrectKeystrokes)),
     [correctKeystrokes, incorrectKeystrokes]
   );
+  const accuracyDisplay = useMemo(() => formatWpm(accuracy), [accuracy]);
 
   const measureStr = useMemo(
     () =>
@@ -219,6 +225,7 @@ export function useTypingGame() {
     setRawWpmHistory([]);
     setIncorrectHistory([]);
     setConsistency(null);
+    hasSavedResultRef.current = false;
     lastBurstTickRef.current = -1;
     rawInputLengthAtLastTickRef.current = 0;
     incorrectAtLastTickRef.current = 0;
@@ -261,7 +268,7 @@ export function useTypingGame() {
         if (!Number.isNaN(limit) && seconds >= limit) {
           setElapsedSeconds(seconds);
           setCorrectCharsSoFar(correct);
-          setWpm(wpmVal);
+          setWpm(roundTo2(wpmVal));
           window.clearInterval(intervalId);
           return;
         }
@@ -269,7 +276,7 @@ export function useTypingGame() {
 
       setElapsedSeconds(seconds);
       setCorrectCharsSoFar(correct);
-      setWpm(wpmVal);
+      setWpm(roundTo2(wpmVal));
     }, 1000);
 
     return () => window.clearInterval(intervalId);
@@ -284,49 +291,97 @@ export function useTypingGame() {
     setElapsedSeconds(finalSeconds);
     const correct = getCorrectCharsSoFar(displayText, rawInput);
     setCorrectCharsSoFar(correct);
+    const finalWpmVal = finalSeconds > 0 ? charsToWpm(correct, finalSeconds) : 0;
     if (finalSeconds > 0) {
-      setWpm(charsToWpm(correct, finalSeconds));
+      setWpm(roundTo2(finalWpmVal));
     }
 
     const rawChars = computeRawChars(displayText, rawInput);
     const finalWpm = Math.round(charsToWpm(correct, finalSeconds));
     const finalRaw = Math.round(charsToWpm(rawChars, finalSeconds));
     const finalIncorrect = incorrectKeystrokesRef.current - incorrectAtLastTickRef.current;
+    const accuracyVal = computeAccuracy(correctKeystrokes, incorrectKeystrokes);
+
+    let wpmHistoryFinal: number[];
+    let rawWpmHistoryFinal: number[];
+    let burstWpmFinal: number[];
+    let incorrectHistoryFinal: number[];
+    let consistencyVal: number;
 
     if (mode === "time") {
       const limit = parseInt(timerDuration, 10);
       const expected = Number.isNaN(limit) ? 0 : limit;
       const keysPressed = keysPressedThisSecondRef.current;
       const finalBurst = Math.round((keysPressed / 5) * 60);
-      setBurstWpm((prev) => {
-        const withFinal = prev.length < expected ? [...prev, finalBurst] : prev;
-        setConsistency(computeConsistency(withFinal));
-        return withFinal;
-      });
-      setWpmHistory((prev) => prev.length < expected ? [...prev, finalWpm] : prev);
-      setRawWpmHistory((prev) => prev.length < expected ? [...prev, finalRaw] : prev);
-      setIncorrectHistory((prev) => prev.length < expected ? [...prev, finalIncorrect] : prev);
+      burstWpmFinal = burstWpm.length < expected ? [...burstWpm, finalBurst] : burstWpm;
+      wpmHistoryFinal = wpmHistory.length < expected ? [...wpmHistory, finalWpm] : wpmHistory;
+      rawWpmHistoryFinal = rawWpmHistory.length < expected ? [...rawWpmHistory, finalRaw] : rawWpmHistory;
+      incorrectHistoryFinal = incorrectHistory.length < expected ? [...incorrectHistory, finalIncorrect] : incorrectHistory;
+      setBurstWpm(burstWpmFinal);
+      setConsistency((consistencyVal = computeConsistency(burstWpmFinal)));
+      setWpmHistory(wpmHistoryFinal);
+      setRawWpmHistory(rawWpmHistoryFinal);
+      setIncorrectHistory(incorrectHistoryFinal);
     } else {
       const elapsedMs = performance.now() - startPerformanceTimeRef.current;
       const totalSeconds = elapsedMs / 1000;
       const partialSeconds = totalSeconds % 1;
       const keysPressed = keysPressedThisSecondRef.current;
-      let finalBurst: number;
-      if (partialSeconds < 0.5) {
-        finalBurst = Math.round((keysPressed / 5) * 60);
-      } else {
-        finalBurst = Math.round((keysPressed / 5) * (60 / partialSeconds));
-      }
-      setBurstWpm((prev) => {
-        const withFinal = [...prev, finalBurst];
-        setConsistency(computeConsistency(withFinal));
-        return withFinal;
-      });
-      setWpmHistory((prev) => [...prev, finalWpm]);
-      setRawWpmHistory((prev) => [...prev, finalRaw]);
-      setIncorrectHistory((prev) => [...prev, finalIncorrect]);
+      const finalBurst =
+        partialSeconds < 0.5
+          ? Math.round((keysPressed / 5) * 60)
+          : Math.round((keysPressed / 5) * (60 / partialSeconds));
+      burstWpmFinal = [...burstWpm, finalBurst];
+      wpmHistoryFinal = [...wpmHistory, finalWpm];
+      rawWpmHistoryFinal = [...rawWpmHistory, finalRaw];
+      incorrectHistoryFinal = [...incorrectHistory, finalIncorrect];
+      consistencyVal = computeConsistency(burstWpmFinal);
+      setBurstWpm(burstWpmFinal);
+      setConsistency(consistencyVal);
+      setWpmHistory(wpmHistoryFinal);
+      setRawWpmHistory(rawWpmHistoryFinal);
+      setIncorrectHistory(incorrectHistoryFinal);
     }
-  }, [isGameEnded, startTime, mode, timerDuration, displayText, rawInput]);
+
+    if (!hasSavedResultRef.current) {
+      hasSavedResultRef.current = true;
+      saveTypingResult({
+        wpm: roundTo2(finalWpmVal),
+        rawWpm: roundTo2(charsToWpm(rawChars, finalSeconds)),
+        accuracy: roundTo2(accuracyVal),
+        consistency: consistencyVal,
+        elapsedSeconds: finalSeconds,
+        mode,
+        language: "english",
+        punctuation,
+        numbers,
+        quoteLength: mode === "quote" ? quoteLength : null,
+        targetTimeSeconds: mode === "time" ? parseInt(timerDuration, 10) : null,
+        targetWordCount: mode === "words" ? parseInt(wordCount, 10) : null,
+        wpmHistory: wpmHistoryFinal,
+        rawWpmHistory: rawWpmHistoryFinal,
+        burstWpm: burstWpmFinal,
+        incorrectHistory: incorrectHistoryFinal,
+      }).catch(console.error);
+    }
+  }, [
+    isGameEnded,
+    startTime,
+    mode,
+    timerDuration,
+    wordCount,
+    quoteLength,
+    displayText,
+    rawInput,
+    punctuation,
+    numbers,
+    correctKeystrokes,
+    incorrectKeystrokes,
+    burstWpm,
+    wpmHistory,
+    rawWpmHistory,
+    incorrectHistory,
+  ]);
 
   // --- Prompt generation / loading ---
 
@@ -462,7 +517,7 @@ export function useTypingGame() {
     isInputFocused, setIsInputFocused,
     isGameEnded,
 
-    wpm, rawWpm, accuracy,
+    wpm, rawWpm, wpmDisplay, rawWpmDisplay, accuracy, accuracyDisplay,
     timeDisplaySeconds,
     elapsedSeconds,
     correctCharsSoFar,

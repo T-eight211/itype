@@ -9,7 +9,7 @@ datasource db {
 
 model typing_results {
   id                Int       @id @default(autoincrement())
-  user_id           String    @unique @default(dbgenerated("(auth.jwt() ->> 'sub'::text)"))
+  user_id           String    @default(dbgenerated("(auth.jwt() ->> 'sub'::text)"))
   wpm               Float?
   raw_wpm           Float?
   accuracy          Float?
@@ -33,12 +33,5 @@ model typing_results {
   raw_wpm_history   Int[]     @default([])
   burst_wpm         Int[]     @default([])
   incorrect_history Int[]     @default([])
-  testing          testing[]
 }
 
-model testing {
-  id      Int    @id @default(autoincrement())
-  testing String
-  user_id String
-  typing_result typing_results @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-}

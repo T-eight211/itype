@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { SignedIn, SignedOut } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
 import { BackgroundLines } from "@/components/ui/background-lines";
 import { KeyboardRGBDemo } from "@/components/animated-keyboard";
 
@@ -34,9 +37,20 @@ export function LandingPage() {
           <p className="max-w-2xl mx-auto text-base md:text-xl text-neutral-700 dark:text-neutral-300 text-center mt-4">
             Master your typing skills with AI-powered practice and real-time feedback
           </p>
+
+          <SignedOut>
+            <div className="flex justify-center gap-4 mt-8">
+              <Button variant="outline" asChild size="lg">
+                <Link href="/game">Play as guest</Link>
+              </Button>
+              <Button asChild size="lg">
+                <Link href="/sign-up">Get Started</Link>
+              </Button>
+            </div>
+          </SignedOut>
         </div>
 
-        <div className="mt-12 w-full flex justify-center overflow-hidden">
+        <div className="mt-8 w-full flex justify-center overflow-hidden">
           <KeyboardRGBDemo />
         </div>
       </div>
