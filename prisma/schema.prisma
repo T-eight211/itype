@@ -7,11 +7,38 @@ datasource db {
   provider = "postgresql"
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model users {
-  id         BigInt   @id @default(autoincrement())
-  user_id    String   @unique @default(dbgenerated("(auth.jwt() ->> 'sub'::text)"))
-  username   String
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @db.Timestamptz(6)
+model typing_results {
+  id                Int       @id @default(autoincrement())
+  user_id           String    @unique @default(dbgenerated("(auth.jwt() ->> 'sub'::text)"))
+  wpm               Float?
+  raw_wpm           Float?
+  accuracy          Float?
+  consistency       Float?
+  ended_at          DateTime? @db.Timestamptz(6)
+  elapsed_seconds   Float?
+  /// "time" | "words" | "quote"
+  game_mode         String?
+  /// For time mode: 15, 30, 60, 120 (seconds). Null for other modes.
+  target_time_seconds Int?
+  /// For words mode: 10, 25, 50, 100. Null for other modes.
+  target_word_count Int?
+  /// For quote mode: "all" | "short" | "medium" | "long" | "thicc". Null for other modes.
+  quote_length      String?
+  language          String?
+  punctuation       Boolean?  @default(false)
+  numbers           Boolean?  @default(false)
+  quote_id          String?
+  quote_source      String?
+  wpm_history       Int[]     @default([])
+  raw_wpm_history   Int[]     @default([])
+  burst_wpm         Int[]     @default([])
+  incorrect_history Int[]     @default([])
+  testing          testing[]
+}
+
+model testing {
+  id      Int    @id @default(autoincrement())
+  testing String
+  user_id String
+  typing_result typing_results @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 }
