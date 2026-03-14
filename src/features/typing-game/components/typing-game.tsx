@@ -247,7 +247,8 @@ export function TypingGame() {
         </div>
       </div>
 
-      {/* ── Stats bar ── */}
+      {/* ── Stats bar (hidden when game ended and graph shown) ── */}
+      {!(game.isGameEnded && game.wpmHistory.length > 0) && (
       <div className="flex items-center justify-center gap-8 text-sm text-muted-foreground">
         <StatItem label="WPM" value={Math.max(0, Math.round(game.wpm))} hoverValue={`${game.wpmDisplay} wpm`} />
         <StatItem label="Raw" value={Math.max(0, Math.round(game.rawWpm))} hoverValue={`${game.rawWpmDisplay} wpm`} />
@@ -290,6 +291,7 @@ export function TypingGame() {
           </div>
         )}
       </div>
+      )}
 
       {/* ── Result graph ── */}
       {game.isGameEnded && game.wpmHistory.length > 0 && (
