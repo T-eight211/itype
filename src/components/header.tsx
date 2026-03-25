@@ -27,7 +27,7 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 px-4 sm:px-6 lg:px-8 py-4 bg-transparent">
       <div className="mx-auto max-w-screen-2xl bg-background/30 backdrop-blur-sm border border-border shadow-lg rounded-2xl">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-6 py-2">
+        <div className="flex items-center justify-between gap-4 px-6 py-2 md:grid md:grid-cols-[1fr_auto_1fr] md:justify-normal">
           <Link href="/" className="flex items-center justify-start">
             <Logo />
           </Link>
