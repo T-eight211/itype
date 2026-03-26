@@ -1,5 +1,5 @@
 import englishWords from "@/data/languages/english.json";
-import contractionsData from "@/data/languages/english_common_contractions.json";
+import contractionsData from "@/data/languages/english/english_common_contractions.json";
 
 const contractions = contractionsData.words as string[];
 

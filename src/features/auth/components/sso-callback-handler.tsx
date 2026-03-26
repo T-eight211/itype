@@ -12,7 +12,7 @@ export function SSOCallbackHandler({ flow, continueSignUp }: SSOCallbackHandlerP
   const { isProcessing } = useSSOCallback(flow)
 
   if (flow === "signup") {
-    console.log("📝 SSO Callback - Using AuthenticateWithRedirectCallback for sign-up flow with transferable=false")
+    console.log("SSO Callback - Using AuthenticateWithRedirectCallback for sign-up flow with transferable=false")
     return (
       <AuthenticateWithRedirectCallback 
         transferable={false}
@@ -26,7 +26,7 @@ export function SSOCallbackHandler({ flow, continueSignUp }: SSOCallbackHandlerP
   }
 
   if (flow === "login" && !continueSignUp) {
-    console.log("🔐 SSO Callback - Using AuthenticateWithRedirectCallback for login flow with transferable=true")
+    console.log("SSO Callback - Using AuthenticateWithRedirectCallback for login flow with transferable=true")
     return (
       <AuthenticateWithRedirectCallback 
         transferable={true}

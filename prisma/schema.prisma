@@ -7,7 +7,7 @@ datasource db {
   provider = "postgresql"
 }
 
-model typing_results {
+model TypingResults {
   id                Int       @id @default(autoincrement())
   user_id           String    @default(dbgenerated("(auth.jwt() ->> 'sub'::text)"))
   wpm               Float?
@@ -33,5 +33,90 @@ model typing_results {
   raw_wpm_history   Int[]     @default([])
   burst_wpm         Int[]     @default([])
   incorrect_history Int[]     @default([])
+  word_mistakes     WordMistake[]
+  @@map("typing_results")
 }
 
+model WordMistake {
+  word_id                 Int          @id @default(autoincrement())
+
+  typing_result_id        Int
+  typing_result           TypingResults @relation(fields: [typing_result_id], references: [id], onDelete: Cascade)
+
+  word_index              Int
+  words_reached_at_end    Int?
+
+  target_word             String
+  final_word              String
+  final_status            String
+
+  correction_count        Int          @default(0)
+  backspace_count         Int          @default(0)
+
+  word_length             Int
+  contains_repeat_pattern Boolean      @default(false)
+  contains_focus_bigram   Boolean      @default(false)
+  contains_focus_trigram  Boolean      @default(false)
+
+  start_time_ms           Int?
+  end_time_ms             Int?
+  duration_ms             Int?
+
+  pause_count             Int          @default(0)
+  max_pause_ms            Int          @default(0)
+
+  error_count             Int          @default(0)
+
+  created_at              DateTime     @default(now()) @db.Timestamptz(6)
+
+  word_error_events       WordErrorEvent[]
+
+  @@index([typing_result_id])
+  @@index([typing_result_id, word_index])
+
+  @@map("word_mistakes")
+}
+
+model WordErrorEvent {
+  id                   Int          @id @default(autoincrement())
+
+  // 🔗 relation to word mistake
+  word_mistake_id      Int
+  word_mistake         WordMistake  @relation(fields: [word_mistake_id], references: [word_id], onDelete: Cascade)
+
+  // ordering of events inside a word
+  event_order          Int
+
+  // substitution | substitution_sequence | transposition | omission | insertion | pause
+  error_type           String
+
+  // was this error later corrected
+  corrected            Boolean?
+
+  // index in TARGET word (0-based, inclusive)
+  char_index_start     Int
+  char_index_end       Int
+
+  // start | middle | end
+  position_in_word     String
+
+  // expected vs actual
+  expected_text        String
+  actual_text          String
+
+  // pause info
+  pause_ms             Int?
+
+  // context
+  preceded_by_pause    Boolean      @default(false)
+
+  // flexible metadata (keyboard, pairs, flags)
+  details_jsonb        Json?
+
+  created_at           DateTime     @default(now()) @db.Timestamptz(6)
+
+  @@index([word_mistake_id])
+  @@index([word_mistake_id, event_order])
+
+  @@map("word_error_events")
+}

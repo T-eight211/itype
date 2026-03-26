@@ -1,0 +1,449 @@
+{
+  "type": "ansi",
+  "layout": "qwerty",
+  "keymapShowTopRow": false,
+  "keys": {
+    "row1": [
+      {
+        "key": "`",
+        "shift": "~",
+        "x": 0,
+        "y": -1,
+        "row": "number",
+        "hand": "left",
+        "finger": "pinky"
+      },
+      {
+        "key": "1",
+        "shift": "!",
+        "x": 1,
+        "y": -1,
+        "row": "number",
+        "hand": "left",
+        "finger": "pinky"
+      },
+      {
+        "key": "2",
+        "shift": "@",
+        "x": 2,
+        "y": -1,
+        "row": "number",
+        "hand": "left",
+        "finger": "ring"
+      },
+      {
+        "key": "3",
+        "shift": "#",
+        "x": 3,
+        "y": -1,
+        "row": "number",
+        "hand": "left",
+        "finger": "middle"
+      },
+      {
+        "key": "4",
+        "shift": "$",
+        "x": 4,
+        "y": -1,
+        "row": "number",
+        "hand": "left",
+        "finger": "index"
+      },
+      {
+        "key": "5",
+        "shift": "%",
+        "x": 5,
+        "y": -1,
+        "row": "number",
+        "hand": "left",
+        "finger": "index"
+      },
+      {
+        "key": "6",
+        "shift": "^",
+        "x": 6,
+        "y": -1,
+        "row": "number",
+        "hand": "right",
+        "finger": "index"
+      },
+      {
+        "key": "7",
+        "shift": "&",
+        "x": 7,
+        "y": -1,
+        "row": "number",
+        "hand": "right",
+        "finger": "index"
+      },
+      {
+        "key": "8",
+        "shift": "*",
+        "x": 8,
+        "y": -1,
+        "row": "number",
+        "hand": "right",
+        "finger": "middle"
+      },
+      {
+        "key": "9",
+        "shift": "(",
+        "x": 9,
+        "y": -1,
+        "row": "number",
+        "hand": "right",
+        "finger": "ring"
+      },
+      {
+        "key": "0",
+        "shift": ")",
+        "x": 10,
+        "y": -1,
+        "row": "number",
+        "hand": "right",
+        "finger": "pinky"
+      },
+      {
+        "key": "-",
+        "shift": "_",
+        "x": 11,
+        "y": -1,
+        "row": "number",
+        "hand": "right",
+        "finger": "pinky"
+      },
+      {
+        "key": "=",
+        "shift": "+",
+        "x": 12,
+        "y": -1,
+        "row": "number",
+        "hand": "right",
+        "finger": "pinky"
+      }
+    ],
+    "row2": [
+      {
+        "key": "q",
+        "shift": "Q",
+        "x": 0,
+        "y": 0,
+        "row": "top",
+        "hand": "left",
+        "finger": "pinky"
+      },
+      {
+        "key": "w",
+        "shift": "W",
+        "x": 1,
+        "y": 0,
+        "row": "top",
+        "hand": "left",
+        "finger": "ring"
+      },
+      {
+        "key": "e",
+        "shift": "E",
+        "x": 2,
+        "y": 0,
+        "row": "top",
+        "hand": "left",
+        "finger": "middle"
+      },
+      {
+        "key": "r",
+        "shift": "R",
+        "x": 3,
+        "y": 0,
+        "row": "top",
+        "hand": "left",
+        "finger": "index"
+      },
+      {
+        "key": "t",
+        "shift": "T",
+        "x": 4,
+        "y": 0,
+        "row": "top",
+        "hand": "left",
+        "finger": "index"
+      },
+      {
+        "key": "y",
+        "shift": "Y",
+        "x": 5,
+        "y": 0,
+        "row": "top",
+        "hand": "right",
+        "finger": "index"
+      },
+      {
+        "key": "u",
+        "shift": "U",
+        "x": 6,
+        "y": 0,
+        "row": "top",
+        "hand": "right",
+        "finger": "index"
+      },
+      {
+        "key": "i",
+        "shift": "I",
+        "x": 7,
+        "y": 0,
+        "row": "top",
+        "hand": "right",
+        "finger": "middle"
+      },
+      {
+        "key": "o",
+        "shift": "O",
+        "x": 8,
+        "y": 0,
+        "row": "top",
+        "hand": "right",
+        "finger": "ring"
+      },
+      {
+        "key": "p",
+        "shift": "P",
+        "x": 9,
+        "y": 0,
+        "row": "top",
+        "hand": "right",
+        "finger": "pinky"
+      },
+      {
+        "key": "[",
+        "shift": "{",
+        "x": 10,
+        "y": 0,
+        "row": "top",
+        "hand": "right",
+        "finger": "pinky"
+      },
+      {
+        "key": "]",
+        "shift": "}",
+        "x": 11,
+        "y": 0,
+        "row": "top",
+        "hand": "right",
+        "finger": "pinky"
+      },
+      {
+        "key": "\\",
+        "shift": "|",
+        "x": 12,
+        "y": 0,
+        "row": "top",
+        "hand": "right",
+        "finger": "pinky"
+      }
+    ],
+    "row3": [
+      {
+        "key": "a",
+        "shift": "A",
+        "x": 0.5,
+        "y": 1,
+        "row": "home",
+        "hand": "left",
+        "finger": "pinky"
+      },
+      {
+        "key": "s",
+        "shift": "S",
+        "x": 1.5,
+        "y": 1,
+        "row": "home",
+        "hand": "left",
+        "finger": "ring"
+      },
+      {
+        "key": "d",
+        "shift": "D",
+        "x": 2.5,
+        "y": 1,
+        "row": "home",
+        "hand": "left",
+        "finger": "middle"
+      },
+      {
+        "key": "f",
+        "shift": "F",
+        "x": 3.5,
+        "y": 1,
+        "row": "home",
+        "hand": "left",
+        "finger": "index"
+      },
+      {
+        "key": "g",
+        "shift": "G",
+        "x": 4.5,
+        "y": 1,
+        "row": "home",
+        "hand": "left",
+        "finger": "index"
+      },
+      {
+        "key": "h",
+        "shift": "H",
+        "x": 5.5,
+        "y": 1,
+        "row": "home",
+        "hand": "right",
+        "finger": "index"
+      },
+      {
+        "key": "j",
+        "shift": "J",
+        "x": 6.5,
+        "y": 1,
+        "row": "home",
+        "hand": "right",
+        "finger": "index"
+      },
+      {
+        "key": "k",
+        "shift": "K",
+        "x": 7.5,
+        "y": 1,
+        "row": "home",
+        "hand": "right",
+        "finger": "middle"
+      },
+      {
+        "key": "l",
+        "shift": "L",
+        "x": 8.5,
+        "y": 1,
+        "row": "home",
+        "hand": "right",
+        "finger": "ring"
+      },
+      {
+        "key": ";",
+        "shift": ":",
+        "x": 9.5,
+        "y": 1,
+        "row": "home",
+        "hand": "right",
+        "finger": "pinky"
+      },
+      {
+        "key": "'",
+        "shift": "\"",
+        "x": 10.5,
+        "y": 1,
+        "row": "home",
+        "hand": "right",
+        "finger": "pinky"
+      }
+    ],
+    "row4": [
+      {
+        "key": "z",
+        "shift": "Z",
+        "x": 1,
+        "y": 2,
+        "row": "bottom",
+        "hand": "left",
+        "finger": "pinky"
+      },
+      {
+        "key": "x",
+        "shift": "X",
+        "x": 2,
+        "y": 2,
+        "row": "bottom",
+        "hand": "left",
+        "finger": "middle"
+      },
+      {
+        "key": "c",
+        "shift": "C",
+        "x": 3,
+        "y": 2,
+        "row": "bottom",
+        "hand": "left",
+        "finger": "index"
+      },
+      {
+        "key": "v",
+        "shift": "V",
+        "x": 4,
+        "y": 2,
+        "row": "bottom",
+        "hand": "left",
+        "finger": "index"
+      },
+      {
+        "key": "b",
+        "shift": "B",
+        "x": 5,
+        "y": 2,
+        "row": "bottom",
+        "hand": "left",
+        "finger": "index"
+      },
+      {
+        "key": "n",
+        "shift": "N",
+        "x": 6,
+        "y": 2,
+        "row": "bottom",
+        "hand": "right",
+        "finger": "index"
+      },
+      {
+        "key": "m",
+        "shift": "M",
+        "x": 7,
+        "y": 2,
+        "row": "bottom",
+        "hand": "right",
+        "finger": "middle"
+      },
+      {
+        "key": ",",
+        "shift": "<",
+        "x": 8,
+        "y": 2,
+        "row": "bottom",
+        "hand": "right",
+        "finger": "ring"
+      },
+      {
+        "key": ".",
+        "shift": ">",
+        "x": 9,
+        "y": 2,
+        "row": "bottom",
+        "hand": "right",
+        "finger": "ring"
+      },
+      {
+        "key": "/",
+        "shift": "?",
+        "x": 10,
+        "y": 2,
+        "row": "bottom",
+        "hand": "right",
+        "finger": "pinky"
+      }
+    ],
+    "row5": [
+      {
+        "key": " ",
+        "shift": " ",
+        "x": 5.5,
+        "y": 3,
+        "row": "space",
+        "hand": "both",
+        "finger": "thumb"
+      }
+    ]
+  }
+}
