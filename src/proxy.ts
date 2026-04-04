@@ -4,12 +4,18 @@ const isPublicRoute = createRouteMatcher([
   '/',
   '/game',
   '/game(.*)',
+  '/leaderboard',
+  '/leaderboard(.*)',
   '/log-in(.*)',
   '/sign-up(.*)',
   '/otp(.*)',
   '/sso-callback(.*)',
   '/forgot-password(.*)',
-  '/reset-password(.*)'
+  '/reset-password(.*)',
+  '/api/admin/seed-clerk-users',
+  '/api/admin/seed-clerk-users(.*)',
+  '/api/admin/sync-clerk-users-to-db',
+  '/api/admin/sync-clerk-users-to-db(.*)',
 ])
 
 export default clerkMiddleware(async (auth, req) => {

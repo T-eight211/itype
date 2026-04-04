@@ -1,7 +1,7 @@
 "use client"
 
 import { TypingGame } from "@/features/typing-game/components/typing-game"
-export default function SignupPage() {
+export default function GamePage() {
 
 
   return (

@@ -2,6 +2,8 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { upsertAllTimeLeaderboardsForResult } from "./upsert-all-time-leaderboards";
+import { upsertDailyLeaderboardsForResult } from "./upsert-daily-leaderboards";
 
 export type SaveTypingResultInput = {
   wpm: number;
@@ -50,30 +52,60 @@ export async function saveTypingResult(input: SaveTypingResultInput) {
   } = input;
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (prisma as any).typing_results.create({
-      data: {
-        user_id: userId,
-        wpm,
-        raw_wpm: rawWpm,
-        accuracy,
-        consistency: consistency ?? undefined,
-        ended_at: new Date(),
-        elapsed_seconds: elapsedSeconds,
-        game_mode: mode,
-        target_time_seconds: mode === "time" ? (targetTimeSeconds ?? undefined) : undefined,
-        target_word_count: mode === "words" ? (targetWordCount ?? undefined) : undefined,
-        quote_length: mode === "quote" ? (quoteLength ?? undefined) : undefined,
-        language,
-        punctuation,
-        numbers,
-        quote_id: quoteId ?? undefined,
-        quote_source: quoteSource ?? undefined,
-        wpm_history: wpmHistory,
-        raw_wpm_history: rawWpmHistory,
-        burst_wpm: burstWpm,
-        incorrect_history: incorrectHistory,
-      },
+    await prisma.$transaction(async (tx) => {
+      const endedAt = new Date();
+
+      // Ensure `users` row exists; `typing_results.user_id` FK → `users.user_id` (Clerk `sub`).
+      await tx.user.upsert({
+        where: { user_id: userId },
+        create: { user_id: userId },
+        update: {},
+      });
+
+      const result = await tx.typingResults.create({
+        data: {
+          user_id: userId,
+          wpm,
+          raw_wpm: rawWpm,
+          accuracy,
+          consistency: consistency ?? undefined,
+          ended_at: endedAt,
+          elapsed_seconds: elapsedSeconds,
+          game_mode: mode,
+          target_time_seconds: mode === "time" ? (targetTimeSeconds ?? undefined) : undefined,
+          target_word_count: mode === "words" ? (targetWordCount ?? undefined) : undefined,
+          quote_length: mode === "quote" ? (quoteLength ?? undefined) : undefined,
+          language,
+          punctuation,
+          numbers,
+          quote_id: quoteId ?? undefined,
+          quote_source: quoteSource ?? undefined,
+          wpm_history: wpmHistory,
+          raw_wpm_history: rawWpmHistory,
+          burst_wpm: burstWpm,
+          incorrect_history: incorrectHistory,
+        },
+        select: { id: true, wpm: true },
+      });
+
+      const newWpm = result.wpm ?? wpm;
+
+      await upsertAllTimeLeaderboardsForResult(tx, {
+        clerkUserId: userId,
+        typingResultId: result.id,
+        newWpm,
+        mode,
+        targetTimeSeconds,
+      });
+
+      await upsertDailyLeaderboardsForResult(tx, {
+        clerkUserId: userId,
+        typingResultId: result.id,
+        newWpm,
+        mode,
+        targetTimeSeconds,
+        endedAt,
+      });
     });
     return { ok: true };
   } catch (err) {

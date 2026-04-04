@@ -57,6 +57,12 @@ export function useTypingGame() {
   const incorrectKeystrokesRef = useRef<number>(0);
   const startPerformanceTimeRef = useRef<number>(0);
   const hasSavedResultRef = useRef(false);
+  /** Prevents game-end effect from re-running after it mutates history state (avoids max update depth). */
+  const endGameFinalizedRef = useRef(false);
+  const burstWpmRef = useRef<number[]>([]);
+  const wpmHistoryRef = useRef<number[]>([]);
+  const rawWpmHistoryRef = useRef<number[]>([]);
+  const incorrectHistoryRef = useRef<number[]>([]);
 
   // --- Derived values ---
 
@@ -167,6 +173,10 @@ export function useTypingGame() {
   useEffect(() => { displayTextRef.current = displayText; }, [displayText]);
   useEffect(() => { rawInputRef.current = rawInput; }, [rawInput]);
   useEffect(() => { incorrectKeystrokesRef.current = incorrectKeystrokes; }, [incorrectKeystrokes]);
+  useEffect(() => { burstWpmRef.current = burstWpm; }, [burstWpm]);
+  useEffect(() => { wpmHistoryRef.current = wpmHistory; }, [wpmHistory]);
+  useEffect(() => { rawWpmHistoryRef.current = rawWpmHistory; }, [rawWpmHistory]);
+  useEffect(() => { incorrectHistoryRef.current = incorrectHistory; }, [incorrectHistory]);
 
   // --- Focus management ---
 
@@ -226,6 +236,7 @@ export function useTypingGame() {
     setIncorrectHistory([]);
     setConsistency(null);
     hasSavedResultRef.current = false;
+    endGameFinalizedRef.current = false;
     lastBurstTickRef.current = -1;
     rawInputLengthAtLastTickRef.current = 0;
     incorrectAtLastTickRef.current = 0;
@@ -286,6 +297,8 @@ export function useTypingGame() {
 
   useEffect(() => {
     if (!isGameEnded || !startTime) return;
+    if (endGameFinalizedRef.current) return;
+    endGameFinalizedRef.current = true;
 
     const finalSeconds = (Date.now() - startTime) / 1000;
     setElapsedSeconds(finalSeconds);
@@ -313,10 +326,14 @@ export function useTypingGame() {
       const expected = Number.isNaN(limit) ? 0 : limit;
       const keysPressed = keysPressedThisSecondRef.current;
       const finalBurst = Math.round((keysPressed / 5) * 60);
-      burstWpmFinal = burstWpm.length < expected ? [...burstWpm, finalBurst] : burstWpm;
-      wpmHistoryFinal = wpmHistory.length < expected ? [...wpmHistory, finalWpm] : wpmHistory;
-      rawWpmHistoryFinal = rawWpmHistory.length < expected ? [...rawWpmHistory, finalRaw] : rawWpmHistory;
-      incorrectHistoryFinal = incorrectHistory.length < expected ? [...incorrectHistory, finalIncorrect] : incorrectHistory;
+      const bw = burstWpmRef.current;
+      const wh = wpmHistoryRef.current;
+      const rwh = rawWpmHistoryRef.current;
+      const ih = incorrectHistoryRef.current;
+      burstWpmFinal = bw.length < expected ? [...bw, finalBurst] : bw;
+      wpmHistoryFinal = wh.length < expected ? [...wh, finalWpm] : wh;
+      rawWpmHistoryFinal = rwh.length < expected ? [...rwh, finalRaw] : rwh;
+      incorrectHistoryFinal = ih.length < expected ? [...ih, finalIncorrect] : ih;
       setBurstWpm(burstWpmFinal);
       setConsistency((consistencyVal = computeConsistency(burstWpmFinal)));
       setWpmHistory(wpmHistoryFinal);
@@ -331,10 +348,14 @@ export function useTypingGame() {
         partialSeconds < 0.5
           ? Math.round((keysPressed / 5) * 60)
           : Math.round((keysPressed / 5) * (60 / partialSeconds));
-      burstWpmFinal = [...burstWpm, finalBurst];
-      wpmHistoryFinal = [...wpmHistory, finalWpm];
-      rawWpmHistoryFinal = [...rawWpmHistory, finalRaw];
-      incorrectHistoryFinal = [...incorrectHistory, finalIncorrect];
+      const bw = burstWpmRef.current;
+      const wh = wpmHistoryRef.current;
+      const rwh = rawWpmHistoryRef.current;
+      const ih = incorrectHistoryRef.current;
+      burstWpmFinal = [...bw, finalBurst];
+      wpmHistoryFinal = [...wh, finalWpm];
+      rawWpmHistoryFinal = [...rwh, finalRaw];
+      incorrectHistoryFinal = [...ih, finalIncorrect];
       consistencyVal = computeConsistency(burstWpmFinal);
       setBurstWpm(burstWpmFinal);
       setConsistency(consistencyVal);
@@ -344,7 +365,6 @@ export function useTypingGame() {
     }
 
     if (!hasSavedResultRef.current) {
-      hasSavedResultRef.current = true;
       saveTypingResult({
         wpm: roundTo2(finalWpmVal),
         rawWpm: roundTo2(charsToWpm(rawChars, finalSeconds)),
@@ -363,6 +383,7 @@ export function useTypingGame() {
         burstWpm: burstWpmFinal,
         incorrectHistory: incorrectHistoryFinal,
       }).catch(console.error);
+      hasSavedResultRef.current = true;
     }
   }, [
     isGameEnded,
@@ -377,10 +398,6 @@ export function useTypingGame() {
     numbers,
     correctKeystrokes,
     incorrectKeystrokes,
-    burstWpm,
-    wpmHistory,
-    rawWpmHistory,
-    incorrectHistory,
   ]);
 
   // --- Prompt generation / loading ---

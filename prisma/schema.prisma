@@ -7,33 +7,57 @@ datasource db {
   provider = "postgresql"
 }
 
+/// App user anchor; `user_id` is Clerk `sub` (JWT subject).
+model User {
+  id      Int    @id @default(autoincrement())
+  user_id String @unique @default(dbgenerated("(auth.jwt() ->> 'sub'::text)"))
+
+  typing_results             TypingResults[]
+  weekly_xp                  WeeklyXp[]
+  leaderboard_all_time_60s   LeaderboardAllTime60s[]
+  leaderboard_all_time_15s   LeaderboardAllTime15s[]
+  leaderboard_daily_60s      LeaderboardDaily60s[]
+  leaderboard_daily_15s      LeaderboardDaily15s[]
+
+  @@map("users")
+}
+
 model TypingResults {
-  id                Int       @id @default(autoincrement())
-  user_id           String    @default(dbgenerated("(auth.jwt() ->> 'sub'::text)"))
-  wpm               Float?
-  raw_wpm           Float?
-  accuracy          Float?
-  consistency       Float?
-  ended_at          DateTime? @db.Timestamptz(6)
-  elapsed_seconds   Float?
+  id                  Int       @id @default(autoincrement())
+  /// Clerk `sub` — FK to `users.user_id`.
+  user_id             String
+  user                User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  wpm                 Float?
+  raw_wpm             Float?
+  accuracy            Float?
+  consistency         Float?
+  ended_at            DateTime? @db.Timestamptz(6)
+  elapsed_seconds     Float?
   /// "time" | "words" | "quote"
-  game_mode         String?
+  game_mode           String?
   /// For time mode: 15, 30, 60, 120 (seconds). Null for other modes.
   target_time_seconds Int?
   /// For words mode: 10, 25, 50, 100. Null for other modes.
-  target_word_count Int?
+  target_word_count   Int?
   /// For quote mode: "all" | "short" | "medium" | "long" | "thicc". Null for other modes.
-  quote_length      String?
-  language          String?
-  punctuation       Boolean?  @default(false)
-  numbers           Boolean?  @default(false)
-  quote_id          String?
-  quote_source      String?
-  wpm_history       Int[]     @default([])
-  raw_wpm_history   Int[]     @default([])
-  burst_wpm         Int[]     @default([])
-  incorrect_history Int[]     @default([])
-  word_mistakes     WordMistake[]
+  quote_length        String?
+  language            String?
+  punctuation         Boolean?  @default(false)
+  numbers             Boolean?  @default(false)
+  quote_id            String?
+  quote_source        String?
+  wpm_history         Int[]     @default([])
+  raw_wpm_history     Int[]     @default([])
+  burst_wpm           Int[]     @default([])
+  incorrect_history   Int[]     @default([])
+  word_mistakes       WordMistake[]
+
+  leaderboard_all_time_60s LeaderboardAllTime60s?
+  leaderboard_all_time_15s LeaderboardAllTime15s?
+  leaderboard_daily_60s    LeaderboardDaily60s?
+  leaderboard_daily_15s    LeaderboardDaily15s?
+
+  @@index([user_id])
   @@map("typing_results")
 }
 
@@ -119,4 +143,67 @@ model WordErrorEvent {
   @@index([word_mistake_id, event_order])
 
   @@map("word_error_events")
+}
+
+model LeaderboardAllTime60s {
+  id               Int           @id @default(autoincrement())
+  typing_result_id Int           @unique
+  typing_result    TypingResults @relation(fields: [typing_result_id], references: [id], onDelete: Cascade)
+  user_id          String        @unique
+  user             User          @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("leaderboard_all_time_60s")
+}
+
+model LeaderboardAllTime15s {
+  id               Int           @id @default(autoincrement())
+  typing_result_id Int           @unique
+  typing_result    TypingResults @relation(fields: [typing_result_id], references: [id], onDelete: Cascade)
+  user_id          String        @unique
+  user             User          @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("leaderboard_all_time_15s")
+}
+
+model LeaderboardDaily60s {
+  id               Int           @id @default(autoincrement())
+  typing_result_id Int           @unique
+  typing_result    TypingResults @relation(fields: [typing_result_id], references: [id], onDelete: Cascade)
+  user_id          String
+  user             User          @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  leaderboard_date DateTime      @db.Date
+
+  @@unique([user_id, leaderboard_date])
+  @@index([leaderboard_date])
+  @@map("leaderboard_daily_60s")
+}
+
+model LeaderboardDaily15s {
+  id               Int           @id @default(autoincrement())
+  typing_result_id Int           @unique
+  typing_result    TypingResults @relation(fields: [typing_result_id], references: [id], onDelete: Cascade)
+  user_id          String
+  user             User          @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  leaderboard_date DateTime      @db.Date
+
+  @@unique([user_id, leaderboard_date])
+  @@index([leaderboard_date])
+  @@map("leaderboard_daily_15s")
+}
+
+/// Weekly XP totals per user. `week_start` is the week bucket (e.g. Monday UTC).
+model WeeklyXp {
+  id                   Int      @id @default(autoincrement())
+  /// Clerk `sub` — FK to `users.user_id`.
+  user_id              String
+  user                 User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  xp                   Int      @default(0)
+  /// Total active typing time for the week (seconds).
+  time_typed_seconds   Float    @default(0)
+  week_start           DateTime @db.Date
+  ended_at             DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([user_id, week_start])
+  @@index([week_start])
+  @@map("weekly_xp")
 }

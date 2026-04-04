@@ -1,0 +1,2 @@
+export const LEADERBOARD_PAGE_SIZE = 5;
+export const DAILY_LEADERBOARD_MAX = 60;

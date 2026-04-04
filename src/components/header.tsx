@@ -65,7 +65,7 @@ export default function Header() {
               </NavigationMenuItem>
               <NavigationMenuItem>
                 <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                  <Link href="/online" className="text-muted-foreground">Online</Link>
+                  <Link href="/leaderboard">Leaderboard</Link>
                 </NavigationMenuLink>
               </NavigationMenuItem>
             </NavigationMenuList>
