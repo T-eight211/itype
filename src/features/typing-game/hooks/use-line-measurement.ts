@@ -24,7 +24,8 @@ export function useLineMeasurement({
     if (!textNode || textNode.nodeType !== Node.TEXT_NODE) return null;
     const indices = new Set<number>();
     let lastTop = -1;
-    for (let i = 0; i < measureStr.length; i++) {
+    const nodeLen = textNode.textContent?.length ?? 0;
+    for (let i = 0; i < measureStr.length && i + 1 <= nodeLen; i++) {
       const range = document.createRange();
       range.setStart(textNode, i);
       range.setEnd(textNode, i + 1);
@@ -65,9 +66,10 @@ export function useLineMeasurement({
     const textNode = measureEl.firstChild;
     if (!textNode || textNode.nodeType !== Node.TEXT_NODE) return;
 
+    const nodeLen = textNode.textContent?.length ?? 0;
     const cursorMeasureIndex = cursorCellIndex < 0 ? 0 : cursorCellIndex;
-    const safeIndex = Math.min(cursorMeasureIndex, measureStr.length);
-    if (safeIndex >= measureStr.length) return;
+    const safeIndex = Math.min(cursorMeasureIndex, measureStr.length - 1, nodeLen - 1);
+    if (safeIndex < 0 || safeIndex + 1 > nodeLen) return;
 
     const range = document.createRange();
     range.setStart(textNode, safeIndex);

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Clock, Type, Quote, Hash, AtSign, RotateCcw, Repeat, SkipForward } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,14 +12,21 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 
-import { type AlignmentCell } from "../lib/alignment";
 import { mean, stdDev } from "../utils/stats";
-import { useTypingGame } from "../hooks/use-typing-game";
+import { useTypingGame, type GameMode } from "../hooks/use-typing-game";
 import { useLineMeasurement } from "../hooks/use-line-measurement";
 import { ResultGraph } from "./result-graph";
+import { TypingTextDisplay } from "./typing-text-display";
+import { WordWrapProbe, type WordWrapGateFn } from "./word-wrap-gate";
 
-export function TypingGame() {
-  const game = useTypingGame();
+type TypingGameProps = {
+  /** When set (from `?mode=` on `/game`), keeps toolbar mode in sync with the URL / header links. */
+  urlMode?: GameMode | null;
+};
+
+export function TypingGame({ urlMode = null }: TypingGameProps) {
+  const wordWrapGateRef = useRef<WordWrapGateFn | null>(null);
+  const game = useTypingGame(urlMode, { wordWrapGateRef });
   const { measureRef, wrapContainerRef, scrollContainerRef } = useLineMeasurement({
     measureStr: game.measureStr,
     cursorCellIndex: game.alignment.cursorCellIndex,
@@ -168,7 +175,7 @@ export function TypingGame() {
           dir="ltr"
           onMouseDown={(e) => {
             e.preventDefault();
-            game.textareaRef.current?.focus();
+            game.focusTypingInput();
           }}
         >
           {/* Hidden measure element */}
@@ -183,6 +190,14 @@ export function TypingGame() {
           >
             {game.measureStr}
           </div>
+
+          <WordWrapProbe
+            gateRef={wordWrapGateRef}
+            displayText={game.displayText}
+            rawInput={game.rawInput}
+            isGameEnded={game.isGameEnded}
+            isInputFocused={game.isInputFocused}
+          />
 
           <style>{`.typing-game-scroll-hide{scrollbar-width:none;-ms-overflow-style:none}.typing-game-scroll-hide::-webkit-scrollbar{display:none}`}</style>
 
@@ -207,7 +222,7 @@ export function TypingGame() {
                 minHeight: "calc(4 * 1.625 * 1em)",
               }}
             >
-              <TextDisplay
+              <TypingTextDisplay
                 alignment={game.alignment}
                 displayText={game.displayText}
                 isGameEnded={game.isGameEnded}
@@ -349,7 +364,18 @@ export function TypingGame() {
           )}
         </div>
       </div>
-      
+
+      {/* ── Word Mistakes debug (game end only) ── */}
+      {game.isGameEnded && game.wordMistakes.length > 0 && (
+        <div className="mt-4 p-3 rounded border border-border bg-muted/30 font-mono text-xs overflow-x-auto max-h-[60vh] overflow-y-auto">
+          <div className="font-semibold text-muted-foreground mb-2">
+            Word Mistakes ({game.wordMistakes.length})
+          </div>
+          <pre className="whitespace-pre-wrap break-words">
+            {JSON.stringify(game.wordMistakes, null, 2)}
+          </pre>
+        </div>
+      )}
 
     </div>
   );
@@ -387,103 +413,4 @@ function DebugRow({ label, value }: { label: string; value: React.ReactNode }) {
       <span className="text-muted-foreground">{label}:</span> {value}
     </div>
   );
-}
-
-function TextDisplay({
-  alignment,
-  displayText,
-  isGameEnded,
-  isInputFocused,
-}: {
-  alignment: ReturnType<typeof import("../lib/alignment").computeAlignment>;
-  displayText: string;
-  isGameEnded: boolean;
-  isInputFocused: boolean;
-}) {
-  const getClass = (cell: AlignmentCell) => {
-    if (cell.type === "extra") return "text-red-800 dark:text-red-400";
-    if (cell.type === "prompt") {
-      if (cell.status === "correct") return "text-foreground";
-      if (cell.status === "wrong") return "text-destructive";
-      return "text-muted-foreground/60";
-    }
-    return "text-foreground";
-  };
-
-  const getCh = (cell: AlignmentCell) =>
-    cell.type === "prompt" ? displayText[cell.index] : cell.char;
-
-  const segments: { word: boolean; start: number; end: number }[] = [];
-  let i = 0;
-  while (i < alignment.cells.length) {
-    const cell = alignment.cells[i];
-    const ch = getCh(cell);
-    if (ch === " ") {
-      segments.push({ word: false, start: i, end: i + 1 });
-      i += 1;
-    } else {
-      const start = i;
-      while (i < alignment.cells.length && getCh(alignment.cells[i]) !== " ") i++;
-      segments.push({ word: true, start, end: i });
-    }
-  }
-
-  const cursorBlinker = (
-    <span
-      className="absolute left-0 top-0 w-0.5 h-full bg-yellow-500"
-      style={{
-        animation:
-          !isGameEnded && isInputFocused
-            ? "cursor-blink 1s step-end infinite"
-            : "none",
-        opacity: !isGameEnded && isInputFocused ? 1 : 0,
-      }}
-      aria-hidden
-    />
-  );
-
-  const out: React.ReactNode[] = [];
-
-  if (alignment.cursorCellIndex === -1) {
-    out.push(
-      <span key="cursor-start" className="inline-block w-0 h-[1em] align-middle relative shrink-0">
-        {cursorBlinker}
-      </span>
-    );
-  }
-
-  segments.forEach((seg, segIdx) => {
-    if (seg.word) {
-      const chars: React.ReactNode[] = [];
-      for (let j = seg.start; j < seg.end; j++) {
-        const cell = alignment.cells[j];
-        chars.push(<span key={j} className={getClass(cell)}>{getCh(cell)}</span>);
-        if (j === alignment.cursorCellIndex) {
-          chars.push(
-            <span key={`cur-${j}`} className="inline-block w-0 h-[1em] align-middle relative shrink-0">
-              {cursorBlinker}
-            </span>
-          );
-        }
-      }
-      out.push(
-        <span key={`w-${segIdx}`} className="whitespace-nowrap">
-          {chars}
-        </span>
-      );
-    } else {
-      const j = seg.start;
-      const cell = alignment.cells[j];
-      out.push(<span key={`s-${segIdx}`} className={getClass(cell)}> </span>);
-      if (j === alignment.cursorCellIndex) {
-        out.push(
-          <span key={`cur-${j}`} className="inline-block w-0 h-[1em] align-middle relative shrink-0">
-            {cursorBlinker}
-          </span>
-        );
-      }
-    }
-  });
-
-  return <>{out}</>;
 }

@@ -5,10 +5,13 @@ import {
   useRef,
   useMemo,
   useCallback,
+  type MutableRefObject,
+  type RefObject,
 } from "react";
 import {
   computeAlignment,
   computeCheckpointInputIndex,
+  countExtrasInActiveInputWord,
   isLastWordFullyCorrect as computeIsLastWordFullyCorrect,
 } from "../lib/alignment";
 import { getLastKeystrokeCorrectness, computeAccuracy } from "../lib/accuracy";
@@ -17,12 +20,37 @@ import { fetchQuote } from "../lib/quotes";
 import { computeConsistency, formatWpm, roundTo2 } from "../utils/stats";
 import { getCorrectCharsSoFar, charsToWpm, computeRawChars } from "../lib/wpm";
 import { saveTypingResult } from "../server/save-typing-result";
+import { useErrorCollector } from "./use-error-collector";
+import { saveWordMistakes } from "../server/save-word-mistakes";
+import type { WordMistake } from "../schemas/word-mistake";
+import type { WordWrapGateFn } from "../components/word-wrap-gate";
 
 export type GameMode = "time" | "words" | "quote";
 export type QuoteLength = "all" | "short" | "medium" | "long" | "thicc";
 
-export function useTypingGame() {
-  const [mode, setMode] = useState<GameMode>("time");
+/** Single place for “move focus to the hidden typing textarea” (rAF so it wins over toolbar buttons). */
+function scheduleTextareaFocus(
+  textareaRef: RefObject<HTMLTextAreaElement | null>,
+  setFocused: (value: boolean) => void
+): () => void {
+  const id = requestAnimationFrame(() => {
+    textareaRef.current?.focus();
+    setFocused(true);
+  });
+  return () => cancelAnimationFrame(id);
+}
+
+export type UseTypingGameOptions = {
+  /** When set, returning true blocks a keystroke that would push the active nowrap word to the next line. */
+  wordWrapGateRef?: MutableRefObject<WordWrapGateFn | null>;
+};
+
+export function useTypingGame(
+  urlMode: GameMode | null = null,
+  options: UseTypingGameOptions = {}
+) {
+  const { wordWrapGateRef } = options;
+  const [mode, setMode] = useState<GameMode>(() => urlMode ?? "time");
   const [wordCount, setWordCount] = useState("25");
   const [timerDuration, setTimerDuration] = useState("30");
   const [quoteLength, setQuoteLength] = useState<QuoteLength>("all");
@@ -43,6 +71,7 @@ export function useTypingGame() {
   const [rawWpmHistory, setRawWpmHistory] = useState<number[]>([]);
   const [incorrectHistory, setIncorrectHistory] = useState<number[]>([]);
   const [consistency, setConsistency] = useState<number | null>(null);
+  const [wordMistakes, setWordMistakes] = useState<WordMistake[]>([]);
 
   // Used to explicitly regenerate a new prompt with the same settings.
   const [regenKey, setRegenKey] = useState(0);
@@ -63,6 +92,10 @@ export function useTypingGame() {
   const wpmHistoryRef = useRef<number[]>([]);
   const rawWpmHistoryRef = useRef<number[]>([]);
   const incorrectHistoryRef = useRef<number[]>([]);
+
+  // --- Error collector ---
+
+  const errorCollector = useErrorCollector();
 
   // --- Derived values ---
 
@@ -170,6 +203,10 @@ export function useTypingGame() {
 
   // --- Ref sync ---
 
+  useEffect(() => {
+    if (urlMode != null) setMode(urlMode);
+  }, [urlMode]);
+
   useEffect(() => { displayTextRef.current = displayText; }, [displayText]);
   useEffect(() => { rawInputRef.current = rawInput; }, [rawInput]);
   useEffect(() => { incorrectKeystrokesRef.current = incorrectKeystrokes; }, [incorrectKeystrokes]);
@@ -178,23 +215,15 @@ export function useTypingGame() {
   useEffect(() => { rawWpmHistoryRef.current = rawWpmHistory; }, [rawWpmHistory]);
   useEffect(() => { incorrectHistoryRef.current = incorrectHistory; }, [incorrectHistory]);
 
-  // --- Focus management ---
+  // --- Focus management (settings change, new prompt via regenKey, initial mount) ---
 
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-      setIsInputFocused(true);
-    }
+  const focusTypingInput = useCallback(() => {
+    scheduleTextareaFocus(textareaRef, setIsInputFocused);
   }, []);
 
   useEffect(() => {
-    const id = requestAnimationFrame(() => {
-      textareaRef.current?.focus();
-      setIsInputFocused(true);
-    });
-    return () => cancelAnimationFrame(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingsKey]);
+    return scheduleTextareaFocus(textareaRef, setIsInputFocused);
+  }, [settingsKey, regenKey]);
 
   // --- Start time detection ---
 
@@ -235,13 +264,16 @@ export function useTypingGame() {
     setRawWpmHistory([]);
     setIncorrectHistory([]);
     setConsistency(null);
+    setWordMistakes([]);
     hasSavedResultRef.current = false;
     endGameFinalizedRef.current = false;
     lastBurstTickRef.current = -1;
     rawInputLengthAtLastTickRef.current = 0;
     incorrectAtLastTickRef.current = 0;
     keysPressedThisSecondRef.current = 0;
-  }, []);
+    startPerformanceTimeRef.current = 0;
+    errorCollector.reset();
+  }, [errorCollector]);
 
   // --- Timer interval ---
 
@@ -365,6 +397,18 @@ export function useTypingGame() {
     }
 
     if (!hasSavedResultRef.current) {
+      hasSavedResultRef.current = true;
+
+      const finalAlignment = computeAlignment(displayText, rawInput);
+      const finalizedMistakes = errorCollector.finalize(
+        displayText,
+        rawInput,
+        finalAlignment,
+        startPerformanceTimeRef.current,
+        { gameMode: mode }
+      );
+      setWordMistakes(finalizedMistakes);
+
       saveTypingResult({
         wpm: roundTo2(finalWpmVal),
         rawWpm: roundTo2(charsToWpm(rawChars, finalSeconds)),
@@ -382,8 +426,16 @@ export function useTypingGame() {
         rawWpmHistory: rawWpmHistoryFinal,
         burstWpm: burstWpmFinal,
         incorrectHistory: incorrectHistoryFinal,
-      }).catch(console.error);
-      hasSavedResultRef.current = true;
+      })
+        .then((res) => {
+          if ("typingResultId" in res && res.typingResultId && finalizedMistakes.length > 0) {
+            return saveWordMistakes({
+              typing_result_id: res.typingResultId,
+              word_mistakes: finalizedMistakes,
+            });
+          }
+        })
+        .catch(console.error);
     }
   }, [
     isGameEnded,
@@ -468,6 +520,34 @@ export function useTypingGame() {
         return;
       }
 
+      if (
+        wordWrapGateRef?.current &&
+        next.length > rawInput.length &&
+        !next.endsWith(" ") &&
+        wordWrapGateRef.current(next)
+      ) {
+        e.preventDefault();
+        if (textareaRef.current) textareaRef.current.value = rawInput;
+        return;
+      }
+
+      // Block extra characters beyond 20 for the current word.
+      // Extras only exist in the active word (checkpoint prevents them in committed words).
+      if (next.length > rawInput.length && !next.endsWith(" ")) {
+        const prevExtraCount = countExtrasInActiveInputWord(alignment, rawInput);
+        if (prevExtraCount >= 20) {
+          e.preventDefault();
+          if (textareaRef.current) textareaRef.current.value = rawInput;
+          return;
+        }
+      }
+
+      // Set performance start time synchronously on the very first keystroke
+      // so the error collector has the correct reference before the useEffect fires.
+      if (rawInput.length === 0 && next.length > 0 && startPerformanceTimeRef.current === 0) {
+        startPerformanceTimeRef.current = performance.now();
+      }
+
       if (next.length > rawInput.length) {
         keysPressedThisSecondRef.current += next.length - rawInput.length;
         for (let i = rawInput.length; i < next.length; i++) {
@@ -481,9 +561,20 @@ export function useTypingGame() {
         }
       }
 
+      const currentAlignment = computeAlignment(displayText, next);
+      errorCollector.onInputChange(rawInput, next, displayText, currentAlignment, startPerformanceTimeRef.current);
+
       setRawInput(next);
     },
-    [isGameEnded, rawInput, checkpointInputIndex, displayText]
+    [
+      isGameEnded,
+      rawInput,
+      checkpointInputIndex,
+      displayText,
+      alignment,
+      errorCollector,
+      wordWrapGateRef,
+    ]
   );
 
   const handleKeyDown = useCallback(
@@ -514,7 +605,8 @@ export function useTypingGame() {
     const currentText = displayTextRef.current || displayText;
     if (!currentText) return;
     resetState(currentText);
-  }, [displayText, resetState]);
+    focusTypingInput();
+  }, [displayText, resetState, focusTypingInput]);
 
   const nextTest = useCallback(() => {
     // Next test is effectively the same as restart: new prompt.
@@ -544,12 +636,14 @@ export function useTypingGame() {
     incorrectHistory,
     consistency,
     completedWordsCount, totalWordsCount,
+    wordMistakes,
 
     alignment,
     measureStr,
     settingsKey,
 
     textareaRef,
+    focusTypingInput,
     handleInputChange,
     handleKeyDown,
 

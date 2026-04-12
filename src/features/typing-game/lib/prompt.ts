@@ -3,12 +3,26 @@ import contractionsData from "@/data/languages/english/english_common_contractio
 
 const contractions = contractionsData.words as string[];
 
+const MAX_WORD_PICK_ATTEMPTS = 100;
+
 export function generateWords(count: number): string {
+  const pool = englishWords.words;
+  const poolLen = pool.length;
   const words: string[] = [];
+
   for (let i = 0; i < count; i++) {
-    const randomIndex = Math.floor(Math.random() * englishWords.words.length);
-    words.push(englishWords.words[randomIndex]);
+    const prev = words[words.length - 1];
+    const prev2 = words[words.length - 2];
+
+    let candidate = pool[0] ?? "";
+    for (let attempt = 0; attempt < MAX_WORD_PICK_ATTEMPTS; attempt++) {
+      const idx = Math.floor(Math.random() * poolLen);
+      candidate = pool[idx] ?? candidate;
+      if (candidate !== prev && candidate !== prev2) break;
+    }
+    words.push(candidate);
   }
+
   return words.join(" ");
 }
 

@@ -52,7 +52,7 @@ export async function saveTypingResult(input: SaveTypingResultInput) {
   } = input;
 
   try {
-    await prisma.$transaction(async (tx) => {
+    const resultId = await prisma.$transaction(async (tx) => {
       const endedAt = new Date();
 
       // Ensure `users` row exists; `typing_results.user_id` FK → `users.user_id` (Clerk `sub`).
@@ -106,8 +106,9 @@ export async function saveTypingResult(input: SaveTypingResultInput) {
         targetTimeSeconds,
         endedAt,
       });
+      return result.id;
     });
-    return { ok: true };
+    return { ok: true, typingResultId: resultId };
   } catch (err) {
     console.error("saveTypingResult error:", err);
     return { error: String(err) };

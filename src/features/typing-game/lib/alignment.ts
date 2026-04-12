@@ -59,6 +59,19 @@ export function computeAlignment(prompt: string, input: string): AlignmentResult
   return { cells, promptCursor: promptCursorConsumed, inputCursor: input.length, cursorCellIndex };
 }
 
+/** Extra cells only for the segment after the last typed space (current input “word”). */
+export function countExtrasInActiveInputWord(
+  alignment: AlignmentResult,
+  rawInput: string
+): number {
+  const wordStart = rawInput.lastIndexOf(" ") + 1;
+  let n = 0;
+  for (const cell of alignment.cells) {
+    if (cell.type === "extra" && cell.inputIndex >= wordStart) n++;
+  }
+  return n;
+}
+
 export function computeCheckpointInputIndex(
   alignment: AlignmentResult,
   displayText: string,
