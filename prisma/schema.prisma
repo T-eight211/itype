@@ -50,6 +50,7 @@ model TypingResults {
   raw_wpm_history     Int[]     @default([])
   burst_wpm           Int[]     @default([])
   incorrect_history   Int[]     @default([])
+  /// Per-word errors/pauses for this run. Inserted after the game via `saveWordMistakes` (see `src/features/typing-game/server/save-word-mistakes.ts`), using `typing_results.id` from `saveTypingResult`.
   word_mistakes       WordMistake[]
 
   leaderboard_all_time_60s LeaderboardAllTime60s?
@@ -61,6 +62,7 @@ model TypingResults {
   @@map("typing_results")
 }
 
+/// One row per prompt word that had at least one `WordErrorEvent` (saved after each game).
 model WordMistake {
   word_id                 Int          @id @default(autoincrement())
 
@@ -101,6 +103,7 @@ model WordMistake {
   @@map("word_mistakes")
 }
 
+/// Ordered keystroke-level errors (substitution, transposition, omission, insertion, pause) for one `WordMistake`.
 model WordErrorEvent {
   id                   Int          @id @default(autoincrement())
 
