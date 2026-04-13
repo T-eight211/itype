@@ -409,6 +409,10 @@ export function useTypingGame(
       );
       setWordMistakes(finalizedMistakes);
 
+      const mistakesToSave = finalizedMistakes.filter(
+        (m) => m.word_error_events.length > 0
+      );
+
       saveTypingResult({
         wpm: roundTo2(finalWpmVal),
         rawWpm: roundTo2(charsToWpm(rawChars, finalSeconds)),
@@ -428,10 +432,10 @@ export function useTypingGame(
         incorrectHistory: incorrectHistoryFinal,
       })
         .then((res) => {
-          if ("typingResultId" in res && res.typingResultId && finalizedMistakes.length > 0) {
+          if ("typingResultId" in res && res.typingResultId && mistakesToSave.length > 0) {
             return saveWordMistakes({
               typing_result_id: res.typingResultId,
-              word_mistakes: finalizedMistakes,
+              word_mistakes: mistakesToSave,
             });
           }
         })
