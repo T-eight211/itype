@@ -28,7 +28,6 @@ import type { WordWrapGateFn } from "../components/word-wrap-gate";
 export type GameMode = "time" | "words" | "quote";
 export type QuoteLength = "all" | "short" | "medium" | "long" | "thicc";
 
-/** Single place for “move focus to the hidden typing textarea” (rAF so it wins over toolbar buttons). */
 function scheduleTextareaFocus(
   textareaRef: RefObject<HTMLTextAreaElement | null>,
   setFocused: (value: boolean) => void
@@ -41,7 +40,6 @@ function scheduleTextareaFocus(
 }
 
 export type UseTypingGameOptions = {
-  /** When set, returning true blocks a keystroke that would push the active nowrap word to the next line. */
   wordWrapGateRef?: MutableRefObject<WordWrapGateFn | null>;
 };
 
@@ -73,7 +71,6 @@ export function useTypingGame(
   const [consistency, setConsistency] = useState<number | null>(null);
   const [wordMistakes, setWordMistakes] = useState<WordMistake[]>([]);
 
-  // Used to explicitly regenerate a new prompt with the same settings.
   const [regenKey, setRegenKey] = useState(0);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -86,18 +83,15 @@ export function useTypingGame(
   const incorrectKeystrokesRef = useRef<number>(0);
   const startPerformanceTimeRef = useRef<number>(0);
   const hasSavedResultRef = useRef(false);
-  /** Prevents game-end effect from re-running after it mutates history state (avoids max update depth). */
   const endGameFinalizedRef = useRef(false);
   const burstWpmRef = useRef<number[]>([]);
   const wpmHistoryRef = useRef<number[]>([]);
   const rawWpmHistoryRef = useRef<number[]>([]);
   const incorrectHistoryRef = useRef<number[]>([]);
 
-  // --- Error collector ---
 
   const errorCollector = useErrorCollector();
 
-  // --- Derived values ---
 
   const alignment = useMemo(
     () => computeAlignment(displayText, rawInput),
@@ -201,7 +195,6 @@ export function useTypingGame(
 
   const settingsKey = `${mode}-${wordCount}-${timerDuration}-${quoteLength}-${punctuation}-${numbers}`;
 
-  // --- Ref sync ---
 
   useEffect(() => {
     if (urlMode != null) setMode(urlMode);
@@ -215,7 +208,6 @@ export function useTypingGame(
   useEffect(() => { rawWpmHistoryRef.current = rawWpmHistory; }, [rawWpmHistory]);
   useEffect(() => { incorrectHistoryRef.current = incorrectHistory; }, [incorrectHistory]);
 
-  // --- Focus management (settings change, new prompt via regenKey, initial mount) ---
 
   const focusTypingInput = useCallback(() => {
     scheduleTextareaFocus(textareaRef, setIsInputFocused);
@@ -225,7 +217,6 @@ export function useTypingGame(
     return scheduleTextareaFocus(textareaRef, setIsInputFocused);
   }, [settingsKey, regenKey]);
 
-  // --- Start time detection ---
 
   useEffect(() => {
     if (!startTime && rawInput.length > 0) {
@@ -238,7 +229,6 @@ export function useTypingGame(
     }
   }, [rawInput, startTime]);
 
-  // --- Cursor position enforcement ---
 
   useLayoutEffect(() => {
     const el = textareaRef.current;
@@ -248,7 +238,6 @@ export function useTypingGame(
     }
   }, [rawInput]);
 
-  // --- Reset helper ---
 
   const resetState = useCallback((text: string) => {
     setDisplayText(text);
@@ -275,7 +264,6 @@ export function useTypingGame(
     errorCollector.reset();
   }, [errorCollector]);
 
-  // --- Timer interval ---
 
   useEffect(() => {
     if (!startTime || isGameEnded) return;
@@ -325,7 +313,6 @@ export function useTypingGame(
     return () => window.clearInterval(intervalId);
   }, [startTime, isGameEnded, mode, timerDuration]);
 
-  // --- Game end ---
 
   useEffect(() => {
     if (!isGameEnded || !startTime) return;
@@ -456,7 +443,6 @@ export function useTypingGame(
     incorrectKeystrokes,
   ]);
 
-  // --- Prompt generation / loading ---
 
   useEffect(() => {
     if (mode === "time" || mode === "words") {
@@ -480,7 +466,6 @@ export function useTypingGame(
     }
   }, [mode, wordCount, timerDuration, punctuation, numbers, quoteLength, regenKey, resetState]);
 
-  // --- Time mode: append text when running low ---
 
   useEffect(() => {
     if (mode !== "time" || !startTime || isGameEnded || displayText.length === 0) return;
@@ -493,7 +478,6 @@ export function useTypingGame(
     }
   }, [mode, startTime, isGameEnded, displayText.length, alignment.promptCursor, numbers, punctuation]);
 
-  // --- Input handlers ---
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -535,8 +519,6 @@ export function useTypingGame(
         return;
       }
 
-      // Block extra characters beyond 20 for the current word.
-      // Extras only exist in the active word (checkpoint prevents them in committed words).
       if (next.length > rawInput.length && !next.endsWith(" ")) {
         const prevExtraCount = countExtrasInActiveInputWord(alignment, rawInput);
         if (prevExtraCount >= 20) {
@@ -546,8 +528,6 @@ export function useTypingGame(
         }
       }
 
-      // Set performance start time synchronously on the very first keystroke
-      // so the error collector has the correct reference before the useEffect fires.
       if (rawInput.length === 0 && next.length > 0 && startPerformanceTimeRef.current === 0) {
         startPerformanceTimeRef.current = performance.now();
       }
@@ -597,15 +577,12 @@ export function useTypingGame(
     [isGameEnded, displayText, rawInput, isLastWordCorrect, alignment.promptCursor]
   );
 
-  // --- Public actions ---
 
   const restartTest = useCallback(() => {
-    // Restart always means: new prompt with current settings.
     setRegenKey((k) => k + 1);
   }, []);
 
   const retakeTest = useCallback(() => {
-    // Retake uses the same prompt text again.
     const currentText = displayTextRef.current || displayText;
     if (!currentText) return;
     resetState(currentText);
@@ -613,7 +590,6 @@ export function useTypingGame(
   }, [displayText, resetState, focusTypingInput]);
 
   const nextTest = useCallback(() => {
-    // Next test is effectively the same as restart: new prompt.
     setRegenKey((k) => k + 1);
   }, []);
 

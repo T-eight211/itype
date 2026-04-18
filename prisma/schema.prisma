@@ -7,7 +7,6 @@ datasource db {
   provider = "postgresql"
 }
 
-/// App user anchor; `user_id` is Clerk `sub` (JWT subject).
 model User {
   id      Int    @id @default(autoincrement())
   user_id String @unique @default(dbgenerated("(auth.jwt() ->> 'sub'::text)"))
@@ -24,7 +23,6 @@ model User {
 
 model TypingResults {
   id                  Int       @id @default(autoincrement())
-  /// Clerk `sub` — FK to `users.user_id`.
   user_id             String
   user                User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
   wpm                 Float?
@@ -33,13 +31,9 @@ model TypingResults {
   consistency         Float?
   ended_at            DateTime? @db.Timestamptz(6)
   elapsed_seconds     Float?
-  /// "time" | "words" | "quote"
   game_mode           String?
-  /// For time mode: 15, 30, 60, 120 (seconds). Null for other modes.
   target_time_seconds Int?
-  /// For words mode: 10, 25, 50, 100. Null for other modes.
   target_word_count   Int?
-  /// For quote mode: "all" | "short" | "medium" | "long" | "thicc". Null for other modes.
   quote_length        String?
   language            String?
   punctuation         Boolean?  @default(false)
@@ -50,7 +44,6 @@ model TypingResults {
   raw_wpm_history     Int[]     @default([])
   burst_wpm           Int[]     @default([])
   incorrect_history   Int[]     @default([])
-  /// Per-word errors/pauses for this run. Inserted after the game via `saveWordMistakes` (see `src/features/typing-game/server/save-word-mistakes.ts`), using `typing_results.id` from `saveTypingResult`.
   word_mistakes       WordMistake[]
 
   leaderboard_all_time_60s LeaderboardAllTime60s?
@@ -62,7 +55,6 @@ model TypingResults {
   @@map("typing_results")
 }
 
-/// One row per prompt word that had at least one `WordErrorEvent` (saved after each game).
 model WordMistake {
   word_id                 Int          @id @default(autoincrement())
 
@@ -103,41 +95,30 @@ model WordMistake {
   @@map("word_mistakes")
 }
 
-/// Ordered keystroke-level errors (substitution, transposition, omission, insertion, pause) for one `WordMistake`.
 model WordErrorEvent {
   id                   Int          @id @default(autoincrement())
 
-  // 🔗 relation to word mistake
   word_mistake_id      Int
   word_mistake         WordMistake  @relation(fields: [word_mistake_id], references: [word_id], onDelete: Cascade)
 
-  // ordering of events inside a word
   event_order          Int
 
-  // substitution | substitution_sequence | transposition | omission | insertion | pause
   error_type           String
 
-  // was this error later corrected
   corrected            Boolean?
 
-  // index in TARGET word (0-based, inclusive)
   char_index_start     Int
   char_index_end       Int
 
-  // start | middle | end
   position_in_word     String
 
-  // expected vs actual
   expected_text        String
   actual_text          String
 
-  // pause info
   pause_ms             Int?
 
-  // context
   preceded_by_pause    Boolean      @default(false)
 
-  // flexible metadata (keyboard, pairs, flags)
   details_jsonb        Json?
 
   created_at           DateTime     @default(now()) @db.Timestamptz(6)
@@ -194,14 +175,11 @@ model LeaderboardDaily15s {
   @@map("leaderboard_daily_15s")
 }
 
-/// Weekly XP totals per user. `week_start` is the week bucket (e.g. Monday UTC).
 model WeeklyXp {
   id                   Int      @id @default(autoincrement())
-  /// Clerk `sub` — FK to `users.user_id`.
   user_id              String
   user                 User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
   xp                   Int      @default(0)
-  /// Total active typing time for the week (seconds).
   time_typed_seconds   Float    @default(0)
   week_start           DateTime @db.Date
   ended_at             DateTime @default(now()) @db.Timestamptz(6)
