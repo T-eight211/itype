@@ -47,6 +47,10 @@ export type LeaderboardViewerSnapshot = {
   username: string;
   profileImageUrl: string | null;
   wpm: number;
+  rawWpm: number;
+  accuracy: number;
+  consistency: number | null;
+  endedAt: string;
 };
 
 const UNKNOWN_USER = "Unknown user";
@@ -112,19 +116,24 @@ async function getUserProfiles(userIds: string[]): Promise<Map<string, UserProfi
   const uniqueIds = Array.from(new Set(userIds)).filter(Boolean);
   if (uniqueIds.length === 0) return new Map();
 
-  const client = await clerkClient();
-  const users = await client.users.getUserList({
-    userId: uniqueIds,
-    limit: uniqueIds.length,
-  });
-
   const profiles = new Map<string, UserProfile>();
-  users.data.forEach((user) => {
-    profiles.set(user.id, {
-      username: displayNameForUser(user),
-      profileImageUrl: user.imageUrl ?? null,
+  try {
+    const client = await clerkClient();
+    const users = await client.users.getUserList({
+      userId: uniqueIds,
+      limit: uniqueIds.length,
     });
-  });
+
+    users.data.forEach((user) => {
+      profiles.set(user.id, {
+        username: displayNameForUser(user),
+        profileImageUrl: user.imageUrl ?? null,
+      });
+    });
+  } catch (error) {
+    console.error("leaderboard getUserProfiles Clerk lookup failed:", error);
+  }
+
   return profiles;
 }
 
@@ -355,60 +364,106 @@ async function clerkProfileForViewer(userId: string): Promise<UserProfile> {
   }
 }
 
+function buildViewerSnapshot(params: {
+  rank: number;
+  total: number;
+  profile: UserProfile;
+  tr: {
+    wpm: number;
+    raw_wpm: number;
+    accuracy: number;
+    consistency: number | null;
+    ended_at: Date;
+  };
+}): LeaderboardViewerSnapshot {
+  const { rank, total, profile, tr } = params;
+  return {
+    rank,
+    total,
+    topPercent: total > 0 ? ((rank - 1) / total) * 100 : 0,
+    username: profile.username,
+    profileImageUrl: profile.profileImageUrl,
+    wpm: tr.wpm,
+    rawWpm: tr.raw_wpm,
+    accuracy: tr.accuracy,
+    consistency: tr.consistency,
+    endedAt: tr.ended_at.toISOString(),
+  };
+}
+
+function hasCompleteViewerTypingResult(
+  tr:
+    | {
+        wpm: number | null;
+        raw_wpm: number | null;
+        accuracy: number | null;
+        consistency: number | null;
+        ended_at: Date | null;
+      }
+    | null
+    | undefined
+): tr is {
+  wpm: number;
+  raw_wpm: number;
+  accuracy: number;
+  consistency: number | null;
+  ended_at: Date;
+} {
+  return tr?.wpm != null && tr.raw_wpm != null && tr.accuracy != null && tr.ended_at != null;
+}
+
 async function viewerAllTime60s(userId: string, profile: UserProfile): Promise<LeaderboardViewerSnapshot | null> {
   const row = await prisma.leaderboardAllTime60s.findFirst({
     where: { user_id: userId },
-    include: { typing_result: { select: { wpm: true, accuracy: true, ended_at: true } } },
+    include: {
+      typing_result: {
+        select: { wpm: true, raw_wpm: true, accuracy: true, consistency: true, ended_at: true },
+      },
+    },
   });
   const tr = row?.typing_result;
-  if (tr?.wpm == null || tr.accuracy == null || tr.ended_at == null) return null;
+  if (!hasCompleteViewerTypingResult(tr)) return null;
 
   const better = await prisma.leaderboardAllTime60s.count({
     where: { typing_result: typingResultStrictlyBetterWhere(tr.wpm, tr.accuracy, tr.ended_at) },
   });
   const total = await prisma.leaderboardAllTime60s.count();
   const rank = better + 1;
-  return {
-    rank,
-    total,
-    topPercent: total > 0 ? ((rank - 1) / total) * 100 : 0,
-    username: profile.username,
-    profileImageUrl: profile.profileImageUrl,
-    wpm: tr.wpm,
-  };
+  return buildViewerSnapshot({ rank, total, profile, tr });
 }
 
 async function viewerAllTime15s(userId: string, profile: UserProfile): Promise<LeaderboardViewerSnapshot | null> {
   const row = await prisma.leaderboardAllTime15s.findFirst({
     where: { user_id: userId },
-    include: { typing_result: { select: { wpm: true, accuracy: true, ended_at: true } } },
+    include: {
+      typing_result: {
+        select: { wpm: true, raw_wpm: true, accuracy: true, consistency: true, ended_at: true },
+      },
+    },
   });
   const tr = row?.typing_result;
-  if (tr?.wpm == null || tr.accuracy == null || tr.ended_at == null) return null;
+  if (!hasCompleteViewerTypingResult(tr)) return null;
 
   const better = await prisma.leaderboardAllTime15s.count({
     where: { typing_result: typingResultStrictlyBetterWhere(tr.wpm, tr.accuracy, tr.ended_at) },
   });
   const total = await prisma.leaderboardAllTime15s.count();
   const rank = better + 1;
-  return {
-    rank,
-    total,
-    topPercent: total > 0 ? ((rank - 1) / total) * 100 : 0,
-    username: profile.username,
-    profileImageUrl: profile.profileImageUrl,
-    wpm: tr.wpm,
-  };
+  return buildViewerSnapshot({ rank, total, profile, tr });
 }
 
 async function viewerDaily60s(userId: string, profile: UserProfile): Promise<LeaderboardViewerSnapshot | null> {
   const todayUtc = utcCalendarDateFromInstant(new Date());
   const row = await prisma.leaderboardDaily60s.findFirst({
     where: { user_id: userId, leaderboard_date: todayUtc },
-    include: { typing_result: { select: { wpm: true, accuracy: true, ended_at: true } } },
+    include: {
+      typing_result: {
+        select: { wpm: true, raw_wpm: true, accuracy: true, consistency: true, ended_at: true },
+      },
+    },
   });
   const tr = row?.typing_result;
-  if (tr?.wpm == null || tr.accuracy == null || tr.ended_at == null) return null;
+  if (!hasCompleteViewerTypingResult(tr)) return null;
 
   const better = await prisma.leaderboardDaily60s.count({
     where: {
@@ -420,24 +475,21 @@ async function viewerDaily60s(userId: string, profile: UserProfile): Promise<Lea
     where: { leaderboard_date: todayUtc },
   });
   const rank = better + 1;
-  return {
-    rank,
-    total,
-    topPercent: total > 0 ? ((rank - 1) / total) * 100 : 0,
-    username: profile.username,
-    profileImageUrl: profile.profileImageUrl,
-    wpm: tr.wpm,
-  };
+  return buildViewerSnapshot({ rank, total, profile, tr });
 }
 
 async function viewerDaily15s(userId: string, profile: UserProfile): Promise<LeaderboardViewerSnapshot | null> {
   const todayUtc = utcCalendarDateFromInstant(new Date());
   const row = await prisma.leaderboardDaily15s.findFirst({
     where: { user_id: userId, leaderboard_date: todayUtc },
-    include: { typing_result: { select: { wpm: true, accuracy: true, ended_at: true } } },
+    include: {
+      typing_result: {
+        select: { wpm: true, raw_wpm: true, accuracy: true, consistency: true, ended_at: true },
+      },
+    },
   });
   const tr = row?.typing_result;
-  if (tr?.wpm == null || tr.accuracy == null || tr.ended_at == null) return null;
+  if (!hasCompleteViewerTypingResult(tr)) return null;
 
   const better = await prisma.leaderboardDaily15s.count({
     where: {
@@ -449,14 +501,7 @@ async function viewerDaily15s(userId: string, profile: UserProfile): Promise<Lea
     where: { leaderboard_date: todayUtc },
   });
   const rank = better + 1;
-  return {
-    rank,
-    total,
-    topPercent: total > 0 ? ((rank - 1) / total) * 100 : 0,
-    username: profile.username,
-    profileImageUrl: profile.profileImageUrl,
-    wpm: tr.wpm,
-  };
+  return buildViewerSnapshot({ rank, total, profile, tr });
 }
 
 export async function getViewerLeaderboardSnapshot(

@@ -12,7 +12,6 @@ import type {
   LeaderboardRow,
   LeaderboardViewerSnapshot,
 } from "@/features/leaderboard/server/get-leaderboards";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   getPaginationItems,
   Pagination,
@@ -291,59 +290,85 @@ export function ServerManagementTable({
         </div>
 
         {viewerUserId ? (
-          <Card className="mb-6 border-border/40 bg-muted/25 py-4 shadow-none">
-            <CardContent className="px-4 py-0 sm:px-6">
-              {viewerLoading ? (
-                <p className="text-sm text-muted-foreground">Loading your placement…</p>
-              ) : !viewer ? (
-                <p className="text-sm text-muted-foreground">
-                  No entry on this leaderboard yet. Play a qualifying run to appear here.
+          <div className="mb-6">
+            {viewerLoading ? (
+              <p className="text-sm text-muted-foreground">Loading your placement…</p>
+            ) : !viewer ? (
+              <p className="text-sm text-muted-foreground">
+                No entry on this leaderboard yet. Play a qualifying run to appear here.
+              </p>
+            ) : isDaily &&
+              viewer.rank > DAILY_LEADERBOARD_MAX &&
+              dailyCutoff?.cutoffWpm != null ? (
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <ViewerCardIdentity viewer={viewer} />
+                <p className="text-sm text-foreground sm:text-right">
+                  Not qualified (min speed required:{" "}
+                  <span className="font-mono font-semibold">
+                    {dailyCutoff.cutoffWpm.toFixed(2)} wpm
+                  </span>
+                  )
                 </p>
-              ) : isDaily &&
-                viewer.rank > DAILY_LEADERBOARD_MAX &&
-                dailyCutoff?.cutoffWpm != null ? (
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <ViewerCardIdentity viewer={viewer} />
-                  <p className="text-sm text-foreground sm:text-right">
-                    Not qualified (min speed required:{" "}
-                    <span className="font-mono font-semibold">
-                      {dailyCutoff.cutoffWpm.toFixed(2)} wpm
-                    </span>
-                    )
-                  </p>
-                </div>
-              ) : isDaily && viewer.rank > DAILY_LEADERBOARD_MAX && dailyCutoff == null ? (
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <ViewerCardIdentity viewer={viewer} />
-                  <p className="text-sm text-muted-foreground sm:text-right">Loading cutoff…</p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <ViewerCardIdentity viewer={viewer} />
-                  <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground sm:justify-end">
-                    <span>
-                      Rank{" "}
-                      <span className={`font-mono font-semibold tabular-nums ${rankColor(viewer.rank)}`}>
-                        #{viewer.rank}
+              </div>
+            ) : isDaily && viewer.rank > DAILY_LEADERBOARD_MAX && dailyCutoff == null ? (
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <ViewerCardIdentity viewer={viewer} />
+                <p className="text-sm text-muted-foreground sm:text-right">Loading cutoff…</p>
+              </div>
+            ) : (
+              <div className="relative overflow-hidden rounded-xl border border-primary bg-primary/20 p-4">
+                <div
+                  className="absolute inset-0 bg-linear-to-l from-primary/10 to-transparent pointer-events-none"
+                  style={{
+                    backgroundSize: "35% 100%",
+                    backgroundPosition: "right",
+                    backgroundRepeat: "no-repeat",
+                    opacity: 0.55,
+                  }}
+                />
+
+                <div className="relative grid grid-cols-12 gap-4 items-center">
+                  <div className="col-span-1">
+                    <div className="flex flex-col leading-none">
+                      <span className={`text-2xl font-bold ${rankColor(viewer.rank)}`}>
+                        {viewer.rank}
                       </span>
-                    </span>
-                    <span>
-                      Top{" "}
-                      <span className="font-mono font-semibold tabular-nums text-foreground">
-                        {formatTopPercentLabel(viewer.rank, viewer.total)}%
+                      <span className="text-[11px] text-muted-foreground">
+                        Top{" "}
+                        <span className="font-mono font-semibold tabular-nums text-foreground">
+                          {formatTopPercentLabel(viewer.rank, viewer.total)}%
+                        </span>
                       </span>
-                    </span>
-                    <span>
-                      WPM{" "}
-                      <span className="font-mono font-semibold tabular-nums text-foreground">
-                        {formatScore(viewer.wpm)}
-                      </span>
+                    </div>
+                  </div>
+
+                  <div className="col-span-3 flex items-center gap-3 min-w-0">
+                    {viewer.profileImageUrl ? (
+                      <img
+                        src={viewer.profileImageUrl}
+                        alt={viewer.username}
+                        className="w-9 h-9 rounded-full border border-border/40 object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full border border-border/40 bg-muted flex items-center justify-center shrink-0 text-sm font-semibold">
+                        {avatarFallback(viewer.username)}
+                      </div>
+                    )}
+                    <span className="text-foreground font-medium truncate">{viewer.username}</span>
+                    <span className="shrink-0 rounded-md border border-primary/50 bg-primary/25 px-2 py-0.5 text-xs font-semibold text-primary">
+                      You
                     </span>
                   </div>
+
+                  <div className="col-span-1 text-foreground font-mono font-medium">{formatScore(viewer.wpm)}</div>
+                  <div className="col-span-1 text-foreground font-mono font-medium">{formatScore(viewer.rawWpm)}</div>
+                  <div className="col-span-2 text-foreground font-mono">{formatPercent(viewer.accuracy)}</div>
+                  <div className="col-span-2 text-foreground font-mono">{formatScore(viewer.consistency)}</div>
+                  <div className="col-span-2 text-foreground text-sm">{formatLocalDateTime(viewer.endedAt)}</div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+            )}
+          </div>
         ) : null}
 
         <motion.div

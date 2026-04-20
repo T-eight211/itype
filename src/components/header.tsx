@@ -13,7 +13,7 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User } from "lucide-react";
+import { BarChart3, User } from "lucide-react";
 
 const gameModes = [
   { title: "Time", href: "/game?mode=time", description: "Type for a set duration." },
@@ -80,7 +80,15 @@ export default function Header() {
                 </Link>
               </SignedOut>
               <SignedIn>
-                <UserButton afterSignOutUrl="/" />
+                <UserButton afterSignOutUrl="/">
+                  <UserButton.MenuItems>
+                    <UserButton.Link
+                      href="/stats"
+                      label="Stats"
+                      labelIcon={<BarChart3 className="size-4" />}
+                    />
+                  </UserButton.MenuItems>
+                </UserButton>
               </SignedIn>
             </div>
           )}
