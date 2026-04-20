@@ -15,11 +15,17 @@ import {
   isLastWordFullyCorrect as computeIsLastWordFullyCorrect,
 } from "../lib/alignment";
 import { getLastKeystrokeCorrectness, computeAccuracy } from "../lib/accuracy";
-import { generateWords, addNumbers, addPunctuation } from "../lib/prompt";
+import {
+  generateWords,
+  generateWordsWithCoachPool,
+  addNumbers,
+  addPunctuation,
+} from "../lib/prompt";
 import { fetchQuote } from "../lib/quotes";
 import { computeConsistency, formatWpm, roundTo2 } from "../utils/stats";
 import { getCorrectCharsSoFar, charsToWpm, computeRawChars } from "../lib/wpm";
 import { saveTypingResult } from "../server/save-typing-result";
+import { scheduleMaybeFirstTypingCoachRun } from "@/features/typing-coach/server/schedule-maybe-first-coach";
 import { useErrorCollector } from "./use-error-collector";
 import { saveWordMistakes } from "../server/save-word-mistakes";
 import type { WordMistake } from "../schemas/word-mistake";
@@ -41,13 +47,23 @@ function scheduleTextareaFocus(
 
 export type UseTypingGameOptions = {
   wordWrapGateRef?: MutableRefObject<WordWrapGateFn | null>;
+  coachMode?: boolean;
+  coachPracticeWords?: string[];
+  coachMixProbability?: number;
 };
+
+const DEFAULT_COACH_MIX = 0.9;
 
 export function useTypingGame(
   urlMode: GameMode | null = null,
   options: UseTypingGameOptions = {}
 ) {
-  const { wordWrapGateRef } = options;
+  const {
+    wordWrapGateRef,
+    coachMode = false,
+    coachPracticeWords = [],
+    coachMixProbability = DEFAULT_COACH_MIX,
+  } = options;
   const [mode, setMode] = useState<GameMode>(() => urlMode ?? "time");
   const [wordCount, setWordCount] = useState("25");
   const [timerDuration, setTimerDuration] = useState("30");
@@ -92,6 +108,23 @@ export function useTypingGame(
 
   const errorCollector = useErrorCollector();
 
+  const buildPromptWordBlock = useCallback(
+    (count: number) => {
+      if (
+        coachMode &&
+        coachPracticeWords.length > 0 &&
+        (mode === "time" || mode === "words")
+      ) {
+        return generateWordsWithCoachPool(
+          count,
+          coachPracticeWords,
+          coachMixProbability
+        );
+      }
+      return generateWords(count);
+    },
+    [coachMode, coachPracticeWords, coachMixProbability, mode]
+  );
 
   const alignment = useMemo(
     () => computeAlignment(displayText, rawInput),
@@ -193,7 +226,8 @@ export function useTypingGame(
     [alignment, displayText]
   );
 
-  const settingsKey = `${mode}-${wordCount}-${timerDuration}-${quoteLength}-${punctuation}-${numbers}`;
+  const coachWordsKey = coachPracticeWords.join("\0");
+  const settingsKey = `${mode}-${wordCount}-${timerDuration}-${quoteLength}-${punctuation}-${numbers}-${coachMode}-${coachWordsKey}`;
 
 
   useEffect(() => {
@@ -418,13 +452,14 @@ export function useTypingGame(
         burstWpm: burstWpmFinal,
         incorrectHistory: incorrectHistoryFinal,
       })
-        .then((res) => {
+        .then(async (res) => {
           if ("typingResultId" in res && res.typingResultId && mistakesToSave.length > 0) {
-            return saveWordMistakes({
+            await saveWordMistakes({
               typing_result_id: res.typingResultId,
               word_mistakes: mistakesToSave,
             });
           }
+          await scheduleMaybeFirstTypingCoachRun();
         })
         .catch(console.error);
     }
@@ -447,7 +482,7 @@ export function useTypingGame(
   useEffect(() => {
     if (mode === "time" || mode === "words") {
       const count = mode === "words" ? parseInt(wordCount) : 100;
-      let text = generateWords(count);
+      let text = buildPromptWordBlock(count);
       if (numbers) text = addNumbers(text);
       if (punctuation) text = addPunctuation(text);
       resetState(text);
@@ -464,19 +499,38 @@ export function useTypingGame(
       loadQuote();
       return () => { isCancelled = true; };
     }
-  }, [mode, wordCount, timerDuration, punctuation, numbers, quoteLength, regenKey, resetState]);
+  }, [
+    mode,
+    wordCount,
+    timerDuration,
+    punctuation,
+    numbers,
+    quoteLength,
+    regenKey,
+    resetState,
+    buildPromptWordBlock,
+  ]);
 
 
   useEffect(() => {
     if (mode !== "time" || !startTime || isGameEnded || displayText.length === 0) return;
     const remainingChars = displayText.length - alignment.promptCursor;
     if (remainingChars < 150) {
-      let batch = generateWords(100);
+      let batch = buildPromptWordBlock(100);
       if (numbers) batch = addNumbers(batch);
       if (punctuation) batch = addPunctuation(batch);
       setDisplayText((prev) => prev + (prev.endsWith(" ") ? "" : " ") + batch);
     }
-  }, [mode, startTime, isGameEnded, displayText.length, alignment.promptCursor, numbers, punctuation]);
+  }, [
+    mode,
+    startTime,
+    isGameEnded,
+    displayText.length,
+    alignment.promptCursor,
+    numbers,
+    punctuation,
+    buildPromptWordBlock,
+  ]);
 
 
   const handleInputChange = useCallback(

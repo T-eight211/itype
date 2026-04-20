@@ -13,9 +13,120 @@ import {
 type WindowArg = "last_30d" | "lifetime";
 
 const SESSION_CAP = 30;
-const TOP_WORDS_BY_DIFFICULTY = 15;
+const TOP_WORDS_BY_DIFFICULTY = 30;
 const INCLUDE_PATTERN_EXTRAS = true;
-const TOP_ERROR_PATTERNS = 25;
+const TOP_ERROR_PATTERNS = 50;
+const ROLLING_WINDOW_DAYS = 30;
+const MIN_SESSIONS_FOR_AI = 15;
+const MIN_NON_PAUSE_ERROR_EVENTS_FOR_AI = 25;
+
+export type TypingCoachAIEligibility =
+  | { ready: true }
+  | {
+      ready: false;
+      reason: "insufficient_data";
+      requirements: {
+        min_sessions: number;
+        min_non_pause_error_events: number;
+      };
+      current: {
+        session_count: number;
+        non_pause_error_event_count: number;
+      };
+      missing: {
+        sessions_needed: number;
+        non_pause_error_events_needed: number;
+      };
+      message: string;
+    };
+
+function buildInsufficientDataMessage(missing: {
+  sessions_needed: number;
+  non_pause_error_events_needed: number;
+}) {
+  if (missing.sessions_needed > 0) {
+    return `Play ${missing.sessions_needed} more game${missing.sessions_needed === 1 ? "" : "s"} to unlock AI coaching.`;
+  }
+  if (missing.non_pause_error_events_needed > 0) {
+    return "You have enough sessions, but not enough error data yet. Keep playing a bit more and we will unlock AI coaching.";
+  }
+  return "Not enough data for AI coaching yet.";
+}
+
+async function computeEligibilityForScope(
+  userId: string,
+  window: WindowArg,
+  allowedIds: number[] | null
+): Promise<TypingCoachAIEligibility> {
+  const idFilterSql =
+    allowedIds && allowedIds.length > 0
+      ? Prisma.sql`AND wm.typing_result_id IN (${Prisma.join(allowedIds)})`
+      : Prisma.empty;
+
+  const scopedSessionCount =
+    window === "lifetime"
+      ? await prisma.typingResults.count({
+          where: { user_id: userId },
+        })
+      : allowedIds?.length ?? 0;
+
+  const nonPauseErrorEventRows = await prisma.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
+    SELECT COUNT(*)::bigint AS count
+    FROM word_error_events we
+    JOIN word_mistakes wm ON wm.word_id = we.word_mistake_id
+    JOIN typing_results tr ON tr.id = wm.typing_result_id
+    WHERE tr.user_id = ${userId}
+      ${idFilterSql}
+      AND we.error_type <> 'pause'
+  `);
+
+  const nonPauseErrorEventCount = Number(nonPauseErrorEventRows[0]?.count ?? BigInt(0));
+  const sessionsNeeded = Math.max(0, MIN_SESSIONS_FOR_AI - scopedSessionCount);
+  const errorsNeeded = Math.max(
+    0,
+    MIN_NON_PAUSE_ERROR_EVENTS_FOR_AI - nonPauseErrorEventCount
+  );
+
+  if (sessionsNeeded === 0 && errorsNeeded === 0) {
+    return { ready: true };
+  }
+
+  const missing = {
+    sessions_needed: sessionsNeeded,
+    non_pause_error_events_needed: errorsNeeded,
+  };
+
+  return {
+    ready: false,
+    reason: "insufficient_data",
+    requirements: {
+      min_sessions: MIN_SESSIONS_FOR_AI,
+      min_non_pause_error_events: MIN_NON_PAUSE_ERROR_EVENTS_FOR_AI,
+    },
+    current: {
+      session_count: scopedSessionCount,
+      non_pause_error_event_count: nonPauseErrorEventCount,
+    },
+    missing,
+    message: buildInsufficientDataMessage(missing),
+  };
+}
+
+export async function getTypingCoachAIEligibilityForUser(
+  userId: string,
+  window: WindowArg = "last_30d"
+): Promise<TypingCoachAIEligibility> {
+  const allowedIds = await getAllowedTypingResultIds(userId, window);
+  return computeEligibilityForScope(userId, window, allowedIds);
+}
+
+export async function getTypingCoachAIEligibility(
+  window: WindowArg = "last_30d"
+): Promise<TypingCoachAIEligibility | { error: string }> {
+  const { userId } = await auth();
+  if (!userId) return { error: "Not signed in" };
+  return getTypingCoachAIEligibilityForUser(userId, window);
+}
 
 function aggregatedEventPatternKey(row: {
   error_type: string;
@@ -48,8 +159,6 @@ function toNumberOrNull(value: unknown): number | null {
   }
   return null;
 }
-
-const ROLLING_WINDOW_DAYS = 30;
 
 async function getAllowedTypingResultIds(
   userId: string,
@@ -128,32 +237,17 @@ function mapRowToAggregatedEvent(row: {
 }
 
 export async function getTypingCoachAIAggregate(
-  window: WindowArg = "last_30d"
-): Promise<TypingCoachAIAggregate | { error: string }> {
-  const { userId } = await auth();
+  window: WindowArg = "last_30d",
+  options?: { userId: string }
+): Promise<TypingCoachAIAggregate | { error: string } | TypingCoachAIEligibility> {
+  let userId: string | undefined = options?.userId;
+  if (!userId) {
+    const { userId: authId } = await auth();
+    userId = authId ?? undefined;
+  }
   if (!userId) return { error: "Not signed in" };
 
   const allowedIds = await getAllowedTypingResultIds(userId, window);
-
-  if (window !== "lifetime" && (!allowedIds || allowedIds.length === 0)) {
-    const empty: TypingCoachAIAggregate = {
-      user_id: userId,
-      window,
-      history: {
-        session_cap: SESSION_CAP,
-        window_days: ROLLING_WINDOW_DAYS,
-        effective_session_count: 0,
-      },
-      session_count: 0,
-      word_count: 0,
-      distinct_word_count: 0,
-      words: [],
-      top_words: [],
-      top_error_patterns: [],
-      generated_at: new Date().toISOString(),
-    };
-    return TypingCoachAIAggregateSchema.parse(empty);
-  }
 
   const typingResultFilter: PrismaNamespace.TypingResultsWhereInput | undefined =
     allowedIds && allowedIds.length > 0 ? { id: { in: allowedIds } } : undefined;
@@ -167,6 +261,9 @@ export async function getTypingCoachAIAggregate(
   };
 
   try {
+    const eligibility = await computeEligibilityForScope(userId, window, allowedIds);
+    if (!eligibility.ready) return eligibility;
+
     const idFilterSql =
       allowedIds && allowedIds.length > 0
         ? Prisma.sql`AND wm.typing_result_id IN (${Prisma.join(allowedIds)})`

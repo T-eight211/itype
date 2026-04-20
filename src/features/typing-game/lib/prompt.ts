@@ -5,6 +5,14 @@ const contractions = contractionsData.words as string[];
 
 const MAX_WORD_PICK_ATTEMPTS = 100;
 
+const COACH_PRACTICE_TOKEN = /^[a-z]+(?:'[a-z]+)*$/;
+
+function normalizeCoachPracticeToken(raw: string): string | null {
+  const w = raw.trim().toLowerCase().replace(/[^a-z']/g, "");
+  if (w.length === 0 || !COACH_PRACTICE_TOKEN.test(w)) return null;
+  return w;
+}
+
 export function generateWords(count: number): string {
   const pool = englishWords.words;
   const poolLen = pool.length;
@@ -19,6 +27,53 @@ export function generateWords(count: number): string {
       const idx = Math.floor(Math.random() * poolLen);
       candidate = pool[idx] ?? candidate;
       if (candidate !== prev && candidate !== prev2) break;
+    }
+    words.push(candidate);
+  }
+
+  return words.join(" ");
+}
+
+export function generateWordsWithCoachPool(
+  count: number,
+  coachPool: string[],
+  coachProbability: number
+): string {
+  const normalized = [
+    ...new Set(
+      coachPool
+        .map((w) => normalizeCoachPracticeToken(w))
+        .filter((w): w is string => w !== null)
+    ),
+  ];
+  if (normalized.length === 0 || coachProbability <= 0) {
+    return generateWords(count);
+  }
+
+  const pool = englishWords.words;
+  const poolLen = pool.length;
+  const coachLen = normalized.length;
+  const words: string[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const prev = words[words.length - 1];
+    const prev2 = words[words.length - 2];
+
+    let candidate = pool[0] ?? "";
+    const useCoach = Math.random() < coachProbability;
+
+    if (useCoach) {
+      for (let attempt = 0; attempt < MAX_WORD_PICK_ATTEMPTS; attempt++) {
+        candidate =
+          normalized[Math.floor(Math.random() * coachLen)] ?? candidate;
+        if (candidate !== prev && candidate !== prev2) break;
+      }
+    } else {
+      for (let attempt = 0; attempt < MAX_WORD_PICK_ATTEMPTS; attempt++) {
+        const idx = Math.floor(Math.random() * poolLen);
+        candidate = pool[idx] ?? candidate;
+        if (candidate !== prev && candidate !== prev2) break;
+      }
     }
     words.push(candidate);
   }

@@ -176,20 +176,28 @@ export const MaxPauseSummarySchema = z
 
 export const AggregatedErrorEventSchema = z
   .object({
-    error_type: ErrorTypeSchema.describe("Grouped error_type key."),
+    error_type: ErrorTypeSchema.describe(
+      "Kind of typing error. substitution = wrong character(s) typed; transposition = adjacent chars swapped; omission = expected char missed; insertion = extra char typed; pause = hesitation/thinking gap (no wrong char)."
+    ),
     char_index_start: z
       .number()
       .int()
       .nonnegative()
-      .describe("Grouped char_index_start key from word_error_events."),
+      .describe("0-based start index inside the target word where the error occurs."),
     char_index_end: z
       .number()
       .int()
       .nonnegative()
-      .describe("Grouped char_index_end key from word_error_events."),
-    position_in_word: PositionInWordSchema.describe("Position label associated with the grouped error key."),
-    expected_text: z.string().describe("Grouped expected_text key."),
-    actual_text: z.string().describe("Grouped actual_text key."),
+      .describe("0-based end index (inclusive) inside the target word where the error occurs."),
+    position_in_word: PositionInWordSchema.describe(
+      "Where in the word the error occurs (start | middle | end | whole)."
+    ),
+    expected_text: z
+      .string()
+      .describe("Substring from the prompt at [char_index_start, char_index_end] that the user was supposed to type."),
+    actual_text: z
+      .string()
+      .describe("What the user actually typed at that position (empty string for omission/pause)."),
     count: z
       .number()
       .int()
@@ -362,17 +370,19 @@ export const TypingCoachAIAggregateSchema = z
       .array(TypingCoachAIWordAggregateSchema)
       .default([])
       .describe(
-        "Union: top tier by difficulty_score (server cap), plus any other words that have a non-pause event in top_error_patterns. Each word includes all aggregated error events (including pauses). Order: difficulty batch first, then pattern extras by difficulty. difficulty_score only on top_words."
+        "Per-word aggregates for the words to focus on. Includes the hardest words by difficulty_score plus extras whose errors match top_error_patterns. Each entry contains every aggregated error event (substitutions, transpositions, omissions, insertions, pauses) for that target word."
       ),
     top_words: z
       .array(TypingCoachAITopWordSchema)
       .default([])
-      .describe("Same entries as words plus difficulty_score on each item."),
+      .describe(
+        "Same entries as `words` but with `difficulty_score` attached. Higher score = harder word for this user. Use this list to identify which words are most painful right now."
+      ),
     top_error_patterns: z
       .array(AggregatedErrorEventSchema)
       .default([])
       .describe(
-        "Top non-pause error signatures globally (pause excluded from ranking); words are selected by match to these patterns."
+        "Most common non-pause error signatures across recent games (ranked by `count`, pause excluded). Char indices are 0-based on the target word; `expected_text` is what the prompt asked for and `actual_text` is what the user typed. Use this to detect cross-word patterns (e.g. 's' often substituted for 'a' near word end)."
       ),
     generated_at: z
       .string()
@@ -380,7 +390,9 @@ export const TypingCoachAIAggregateSchema = z
       .optional()
       .describe("ISO timestamp when this aggregate payload was generated."),
   })
-  .describe("Complete aggregated telemetry payload passed to typing coach AI.")
+  .describe(
+    "Aggregated typing telemetry for the typing coach AI. All counts are summaries across recent typing sessions, NOT raw keystroke streams. Use this to identify ONE concrete weakness to focus on (look at top_error_patterns, top_words by difficulty_score, and per-word error events). Char indices in error events are 0-based on the target word."
+  )
   .meta({
     source_tables: ["word_mistakes", "word_error_events"],
     consumer: "typing coach feedback and practice-word generation",

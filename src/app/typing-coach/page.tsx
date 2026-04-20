@@ -1,4 +1,5 @@
 import { getTypingCoachAIAggregate } from "@/features/typing-coach/server/get-ai-aggregate";
+import { TypingCoachJsonPanel } from "./typing-coach-json-panel";
 
 type PageProps = {
   searchParams?: Promise<{ window?: "last_30d" | "lifetime" }>;
@@ -18,9 +19,7 @@ export default async function TypingCoachPage({ searchParams }: PageProps) {
       <p className="mt-2 text-sm text-muted-foreground">
         Window: <span className="font-mono">{window}</span>
       </p>
-      <pre className="mt-6 overflow-auto rounded-lg border bg-muted/40 p-4 text-xs leading-6">
-        {JSON.stringify(result, null, 2)}
-      </pre>
+      <TypingCoachJsonPanel data={result} />
     </main>
   );
 }

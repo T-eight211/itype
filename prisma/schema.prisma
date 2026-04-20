@@ -12,6 +12,7 @@ model User {
   user_id String @unique @default(dbgenerated("(auth.jwt() ->> 'sub'::text)"))
 
   typing_results             TypingResults[]
+  typing_coach_ai_runs       TypingCoachAiRun[]
   weekly_xp                  WeeklyXp[]
   leaderboard_all_time_60s   LeaderboardAllTime60s[]
   leaderboard_all_time_15s   LeaderboardAllTime15s[]
@@ -19,6 +20,50 @@ model User {
   leaderboard_daily_15s      LeaderboardDaily15s[]
 
   @@map("users")
+}
+
+enum TypingCoachAiRunStatus {
+  pending
+  completed
+  failed
+}
+
+model TypingCoachAiRun {
+  id     Int    @id @default(autoincrement())
+  user_id String
+  user   User   @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  status        TypingCoachAiRunStatus @default(pending)
+  error_message String?
+
+  input_snapshot Json
+
+  model                     String
+
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  completed_at DateTime? @db.Timestamptz(6)
+
+  feedbackItems TypingCoachAiFeedbackItem[]
+
+  @@index([user_id])
+  @@index([user_id, created_at])
+  @@map("typing_coach_ai_runs")
+}
+
+model TypingCoachAiFeedbackItem {
+  id    Int @id @default(autoincrement())
+  run_id Int
+  run   TypingCoachAiRun @relation(fields: [run_id], references: [id], onDelete: Cascade)
+
+  sort_order    Int
+  feedback_text String @db.Text
+  practice_words Json
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([run_id, sort_order])
+  @@index([run_id])
+  @@map("typing_coach_ai_feedback_items")
 }
 
 model TypingResults {
