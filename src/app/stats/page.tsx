@@ -4,6 +4,8 @@ import { auth } from "@clerk/nextjs/server";
 import { StatsLeaderboardCard } from "@/features/stats/components/stats-leaderboard-card";
 import { StatsProfileCard } from "@/features/stats/components/stats-profile-card";
 import { StatsRecentGamesCard } from "@/features/stats/components/stats-recent-games-card";
+import CalendarHeatmap from "@/features/stats/components/calendar-heatmap";
+import { getDailyActivity } from "@/features/stats/server/get-daily-activity";
 import { getRecentGamesStats } from "@/features/stats/server/get-recent-games-stats";
 import { getStatsProfile } from "@/features/stats/server/get-stats-profile";
 
@@ -14,10 +16,11 @@ export const metadata: Metadata = {
 
 export default async function StatsPage() {
   const { userId } = await auth();
-  const [profile, leaderboard, recentGames] = await Promise.all([
+  const [profile, leaderboard, recentGames, dailyActivity] = await Promise.all([
     getStatsProfile(),
     userId ? getViewerLeaderboardSnapshot("all_time_15s", userId) : Promise.resolve(null),
     userId ? getRecentGamesStats(userId) : Promise.resolve({ time: [], words: [] }),
+    userId ? getDailyActivity(userId) : Promise.resolve([]),
   ]);
 
   return (
@@ -28,7 +31,9 @@ export default async function StatsPage() {
           rank={leaderboard?.rank ?? null}
           topPercent={leaderboard?.topPercent ?? null}
         />
+        
         <StatsRecentGamesCard stats={recentGames} />
+        <CalendarHeatmap data={dailyActivity} />
       </div>
     </main>
   );
