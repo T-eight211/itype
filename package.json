@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@ai-sdk/gateway": "^3.0.104",
+    "@base-ui/react": "^1.4.1",
     "@clerk/nextjs": "^6.35.2",
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.4.2",

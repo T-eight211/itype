@@ -12,6 +12,8 @@ interface CSSCustomProperties extends React.CSSProperties {
 type KeycapProps = {
   height?: string
   keylightColor?: "default" | "red" | "blue" | "green" | "purple" | "rgb"
+  /** When true (e.g. react/next keymap match), draws a full-key outline/glow around the entire cap. */
+  highlightFullKey?: boolean
   char?: string
   secondaryChar?: string
   className?: string
@@ -95,6 +97,7 @@ const RGBAnimation = memo(function RGBAnimation({
 export const Keycap = memo(function Keycap({
   height = "48px",
   keylightColor = "default",
+  highlightFullKey = false,
   char,
   secondaryChar,
   variant,
@@ -140,6 +143,9 @@ export const Keycap = memo(function Keycap({
           keylightColors[keylightColor].dark,
           "h-[var(--keycap-height)]",
           "will-change-transform",
+          highlightFullKey &&
+            keylightColor === "rgb" &&
+            "z-20 ring-2 ring-(--rgb-color) ring-offset-2 ring-offset-background dark:ring-offset-background shadow-[0_0_14px_2px_var(--rgb-color)]",
           className
         )}
       >

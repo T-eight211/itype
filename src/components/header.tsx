@@ -13,7 +13,7 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { BarChart3, User } from "lucide-react";
+import { BarChart3, Settings, User } from "lucide-react";
 
 const gameModes = [
   { title: "Time", href: "/game?mode=time", description: "Type for a set duration." },
@@ -73,11 +73,20 @@ export default function Header() {
           {isLoaded && (
             <div className="flex items-center justify-end">
               <SignedOut>
-                <Link href="/log-in" className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <Avatar>
-                    <AvatarFallback className="bg-muted"><User className="size-4" /></AvatarFallback>
-                  </Avatar>
-                </Link>
+                <div className="flex items-center gap-1">
+                  <Link
+                    href="/settings"
+                    className="rounded-full p-2 text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label="Settings"
+                  >
+                    <Settings className="size-5" />
+                  </Link>
+                  <Link href="/log-in" className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <Avatar>
+                      <AvatarFallback className="bg-muted"><User className="size-4" /></AvatarFallback>
+                    </Avatar>
+                  </Link>
+                </div>
               </SignedOut>
               <SignedIn>
                 <UserButton afterSignOutUrl="/">
@@ -86,6 +95,11 @@ export default function Header() {
                       href="/stats"
                       label="Stats"
                       labelIcon={<BarChart3 className="size-4" />}
+                    />
+                    <UserButton.Link
+                      href="/settings"
+                      label="Settings"
+                      labelIcon={<Settings className="size-4" />}
                     />
                   </UserButton.MenuItems>
                 </UserButton>

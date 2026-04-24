@@ -30,9 +30,12 @@ import { useErrorCollector } from "./use-error-collector";
 import { saveWordMistakes } from "../server/save-word-mistakes";
 import type { WordMistake } from "../schemas/word-mistake";
 import type { WordWrapGateFn } from "../components/word-wrap-gate";
+import type { KeymapReactFlash } from "../lib/keymap-react-flash";
 
 export type GameMode = "time" | "words" | "quote";
 export type QuoteLength = "all" | "short" | "medium" | "long" | "thicc";
+
+const REACT_KEYMAP_FLASH_MS = 220;
 
 function scheduleTextareaFocus(
   textareaRef: RefObject<HTMLTextAreaElement | null>,
@@ -86,6 +89,12 @@ export function useTypingGame(
   const [incorrectHistory, setIncorrectHistory] = useState<number[]>([]);
   const [consistency, setConsistency] = useState<number | null>(null);
   const [wordMistakes, setWordMistakes] = useState<WordMistake[]>([]);
+  const [isCapsLockOn, setIsCapsLockOn] = useState(false);
+  const [isShiftPressed, setIsShiftPressed] = useState(false);
+  /** Overlapping printable-key flashes for keymap “react” (each expires on its own timer). */
+  const [keymapReactFlashes, setKeymapReactFlashes] = useState<KeymapReactFlash[]>([]);
+  const keymapReactFlashIdRef = useRef(0);
+  const keymapReactFlashTimeoutsRef = useRef<Map<number, number>>(new Map());
 
   const [regenKey, setRegenKey] = useState(0);
 
@@ -107,6 +116,19 @@ export function useTypingGame(
 
 
   const errorCollector = useErrorCollector();
+
+  const clearAllKeymapReactFlashes = useCallback(() => {
+    keymapReactFlashTimeoutsRef.current.forEach((tid) => window.clearTimeout(tid));
+    keymapReactFlashTimeoutsRef.current.clear();
+    setKeymapReactFlashes([]);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      keymapReactFlashTimeoutsRef.current.forEach((tid) => window.clearTimeout(tid));
+      keymapReactFlashTimeoutsRef.current.clear();
+    };
+  }, []);
 
   const buildPromptWordBlock = useCallback(
     (count: number) => {
@@ -130,6 +152,13 @@ export function useTypingGame(
     () => computeAlignment(displayText, rawInput),
     [displayText, rawInput]
   );
+
+  const keymapNextExpectedChar = useMemo(() => {
+    if (alignment.promptCursor >= displayText.length) return null;
+    const ch = displayText[alignment.promptCursor];
+    if (ch === "\n" || ch === "\r") return null;
+    return ch ?? null;
+  }, [displayText, alignment.promptCursor]);
 
   const checkpointInputIndex = useMemo(
     () => computeCheckpointInputIndex(alignment, displayText, rawInput),
@@ -242,6 +271,19 @@ export function useTypingGame(
   useEffect(() => { rawWpmHistoryRef.current = rawWpmHistory; }, [rawWpmHistory]);
   useEffect(() => { incorrectHistoryRef.current = incorrectHistory; }, [incorrectHistory]);
 
+  useEffect(() => {
+    const syncModifierKeyboardState = (event: KeyboardEvent) => {
+      setIsCapsLockOn(event.getModifierState("CapsLock"));
+      setIsShiftPressed(event.getModifierState("Shift"));
+    };
+    window.addEventListener("keydown", syncModifierKeyboardState);
+    window.addEventListener("keyup", syncModifierKeyboardState);
+    return () => {
+      window.removeEventListener("keydown", syncModifierKeyboardState);
+      window.removeEventListener("keyup", syncModifierKeyboardState);
+    };
+  }, []);
+
 
   const focusTypingInput = useCallback(() => {
     scheduleTextareaFocus(textareaRef, setIsInputFocused);
@@ -288,6 +330,7 @@ export function useTypingGame(
     setIncorrectHistory([]);
     setConsistency(null);
     setWordMistakes([]);
+    clearAllKeymapReactFlashes();
     hasSavedResultRef.current = false;
     endGameFinalizedRef.current = false;
     lastBurstTickRef.current = -1;
@@ -296,7 +339,7 @@ export function useTypingGame(
     keysPressedThisSecondRef.current = 0;
     startPerformanceTimeRef.current = 0;
     errorCollector.reset();
-  }, [errorCollector]);
+  }, [errorCollector, clearAllKeymapReactFlashes]);
 
 
   useEffect(() => {
@@ -615,8 +658,29 @@ export function useTypingGame(
     ]
   );
 
+  useEffect(() => {
+    if (isGameEnded) clearAllKeymapReactFlashes();
+  }, [isGameEnded, clearAllKeymapReactFlashes]);
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (!isGameEnded && e.key.length === 1) {
+        const id = ++keymapReactFlashIdRef.current;
+        setKeymapReactFlashes((prev) => [...prev, { id, ch: e.key }]);
+        const tid = window.setTimeout(() => {
+          setKeymapReactFlashes((prev) => prev.filter((f) => f.id !== id));
+          keymapReactFlashTimeoutsRef.current.delete(id);
+        }, REACT_KEYMAP_FLASH_MS);
+        keymapReactFlashTimeoutsRef.current.set(id, tid);
+      }
+
+      if (e.key === "CapsLock") {
+        // CapsLock toggles on key press; derive next state directly to avoid inverted reads.
+        setIsCapsLockOn((prev) => !prev);
+      } else {
+        setIsCapsLockOn(e.getModifierState("CapsLock"));
+      }
+      setIsShiftPressed(e.getModifierState("Shift"));
       if (e.key === "Enter") {
         e.preventDefault();
         if (!isGameEnded && displayText.length > 0 && rawInput.length > 0 && !isLastWordCorrect) {
@@ -630,6 +694,13 @@ export function useTypingGame(
     },
     [isGameEnded, displayText, rawInput, isLastWordCorrect, alignment.promptCursor]
   );
+
+  const handleKeyUp = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key !== "CapsLock") {
+      setIsCapsLockOn(e.getModifierState("CapsLock"));
+    }
+    setIsShiftPressed(e.getModifierState("Shift"));
+  }, []);
 
 
   const restartTest = useCallback(() => {
@@ -658,7 +729,12 @@ export function useTypingGame(
     displayText,
     rawInput,
     isInputFocused, setIsInputFocused,
+    isCapsLockOn, setIsCapsLockOn,
+    isShiftPressed,
     isGameEnded,
+
+    keymapReactFlashes,
+    keymapNextExpectedChar,
 
     wpm, rawWpm, wpmDisplay, rawWpmDisplay, accuracy, accuracyDisplay,
     timeDisplaySeconds,
@@ -680,6 +756,7 @@ export function useTypingGame(
     focusTypingInput,
     handleInputChange,
     handleKeyDown,
+    handleKeyUp,
 
     restartTest,
     retakeTest,

@@ -17,6 +17,8 @@ import { mean, stdDev } from "../utils/stats";
 import { useTypingGame, type GameMode } from "../hooks/use-typing-game";
 import { useLineMeasurement } from "../hooks/use-line-measurement";
 import { ResultGraph } from "./result-graph";
+import { TypingGameLayoutKeyboard } from "./typing-game-layout-keyboard";
+import { useTypingGameKeymap } from "../hooks/use-typing-game-keymap";
 import { TypingTextDisplay } from "./typing-text-display";
 import { WordWrapProbe, type WordWrapGateFn } from "./word-wrap-gate";
 import {
@@ -42,8 +44,11 @@ type FeedbackApiState =
   | { status: "error" };
 
 const COACH_POPOVER_AUTO_CLOSE_MS = 8000;
+const SHOW_DEBUG_PANEL = false;
+const SHOW_WORD_MISTAKES_PANEL = false;
 
 export function TypingGame({ urlMode = null }: TypingGameProps) {
+  const keymap = useTypingGameKeymap();
   const wordWrapGateRef = useRef<WordWrapGateFn | null>(null);
   const streamedCoachFeedbackKeysRef = useRef<Set<string>>(new Set());
   const promptStreamIntervalRef = useRef<number | null>(null);
@@ -651,6 +656,7 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
             readOnly={game.isGameEnded || isCoachPromptStreaming}
             onChange={game.handleInputChange}
             onKeyDown={game.handleKeyDown}
+            onKeyUp={game.handleKeyUp}
             onPaste={(e) => e.preventDefault()}
             onCopy={(e) => e.preventDefault()}
             onCut={(e) => e.preventDefault()}
@@ -674,6 +680,31 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
           />
         </div>
       </div>
+      <div className="mx-auto mt-2 h-5 w-full max-w-5xl">
+        {game.isCapsLockOn ? (
+          <p className="text-center text-sm font-medium text-amber-500">Caps Lock is ON</p>
+        ) : null}
+      </div>
+      {keymap.status === "ready" &&
+        keymap.settings.keymapDisplay !== "off" &&
+        keymap.layout && (
+          <TypingGameLayoutKeyboard
+            layout={keymap.layout}
+            showTopRowSetting={keymap.settings.showTopRow}
+            keymapDisplay={keymap.settings.keymapDisplay}
+            testPromptContainsNumber={/\d/.test(game.displayText)}
+            nextHighlightChar={
+              keymap.settings.keymapDisplay === "next" ? game.keymapNextExpectedChar : null
+            }
+            reactFlashes={
+              keymap.settings.keymapDisplay === "react" ? game.keymapReactFlashes : []
+            }
+            legendStyle={keymap.settings.legendStyle}
+            keymapSize={keymap.settings.keymapSize}
+            isCapsLockOn={game.isCapsLockOn}
+            isShiftPressed={game.isShiftPressed}
+          />
+        )}
 
       {!(game.isGameEnded && game.wpmHistory.length > 0) && (
       <div className="flex items-center justify-center gap-8 text-sm text-muted-foreground">
@@ -740,48 +771,50 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
         />
       )}
 
-      <div className="mt-4 p-3 rounded border border-border bg-muted/30 font-mono text-xs overflow-x-auto">
-        <div className="font-semibold text-muted-foreground mb-1">Debug</div>
-        <div className="grid gap-1">
-          <DebugRow label="promptCursor" value={`${game.alignment.promptCursor} / ${game.displayText.length}`} />
-          <DebugRow label="input length" value={game.alignment.inputCursor} />
-          <DebugRow
-            label="raw chars"
-            value={Math.max(0, game.rawInput.length - game.alignment.cells.filter((c) => c.type === "extra").length)}
-          />
-          <DebugRow label="chars (correct)" value={game.correctCharsSoFar} />
-          <DebugRow label="rawInput" value={JSON.stringify(game.rawInput)} />
-          <DebugRow label="cursorCellIndex" value={game.alignment.cursorCellIndex} />
-          <DebugRow label="accuracy" value={`${game.correctKeystrokes} correct / ${game.incorrectKeystrokes} incorrect`} />
-          {coachDebugInfo && <DebugRow label="coach" value={coachDebugInfo} />}
+      {SHOW_DEBUG_PANEL ? (
+        <div className="mt-4 rounded border border-border bg-muted/30 p-3 font-mono text-xs overflow-x-auto">
+          <div className="mb-1 font-semibold text-muted-foreground">Debug</div>
+          <div className="grid gap-1">
+            <DebugRow label="promptCursor" value={`${game.alignment.promptCursor} / ${game.displayText.length}`} />
+            <DebugRow label="input length" value={game.alignment.inputCursor} />
+            <DebugRow
+              label="raw chars"
+              value={Math.max(0, game.rawInput.length - game.alignment.cells.filter((c) => c.type === "extra").length)}
+            />
+            <DebugRow label="chars (correct)" value={game.correctCharsSoFar} />
+            <DebugRow label="rawInput" value={JSON.stringify(game.rawInput)} />
+            <DebugRow label="cursorCellIndex" value={game.alignment.cursorCellIndex} />
+            <DebugRow label="accuracy" value={`${game.correctKeystrokes} correct / ${game.incorrectKeystrokes} incorrect`} />
+            {coachDebugInfo && <DebugRow label="coach" value={coachDebugInfo} />}
 
-          {game.burstWpm.length > 0 && (
-            <>
-              <DebugRow label="burstWpm" value={`[${game.burstWpm.join(", ")}]`} />
-              <DebugRow label="wpmHistory" value={`[${game.wpmHistory.join(", ")}]`} />
-              <DebugRow label="rawWpmHistory" value={`[${game.rawWpmHistory.join(", ")}]`} />
-              <DebugRow label="incorrectHistory" value={`[${game.incorrectHistory.join(", ")}]`} />
-              <DebugRow label="burst mean" value={mean(game.burstWpm).toFixed(2)} />
-              <DebugRow label="burst stdDev" value={stdDev(game.burstWpm).toFixed(2)} />
-              <DebugRow
-                label="burst CV"
-                value={
-                  mean(game.burstWpm) === 0
-                    ? "—"
-                    : (stdDev(game.burstWpm) / mean(game.burstWpm)).toFixed(4)
-                }
-              />
-            </>
-          )}
+            {game.burstWpm.length > 0 && (
+              <>
+                <DebugRow label="burstWpm" value={`[${game.burstWpm.join(", ")}]`} />
+                <DebugRow label="wpmHistory" value={`[${game.wpmHistory.join(", ")}]`} />
+                <DebugRow label="rawWpmHistory" value={`[${game.rawWpmHistory.join(", ")}]`} />
+                <DebugRow label="incorrectHistory" value={`[${game.incorrectHistory.join(", ")}]`} />
+                <DebugRow label="burst mean" value={mean(game.burstWpm).toFixed(2)} />
+                <DebugRow label="burst stdDev" value={stdDev(game.burstWpm).toFixed(2)} />
+                <DebugRow
+                  label="burst CV"
+                  value={
+                    mean(game.burstWpm) === 0
+                      ? "—"
+                      : (stdDev(game.burstWpm) / mean(game.burstWpm)).toFixed(4)
+                  }
+                />
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      ) : null}
 
-      {game.isGameEnded && game.wordMistakes.length > 0 && (
+      {SHOW_WORD_MISTAKES_PANEL && game.isGameEnded && game.wordMistakes.length > 0 && (
         <div className="mt-4 p-3 rounded border border-border bg-muted/30 font-mono text-xs overflow-x-auto max-h-[60vh] overflow-y-auto">
           <div className="font-semibold text-muted-foreground mb-2">
             Word Mistakes ({game.wordMistakes.length})
           </div>
-          <pre className="whitespace-pre-wrap break-words">
+          <pre className="whitespace-pre-wrap wrap-break-word">
             {JSON.stringify(game.wordMistakes, null, 2)}
           </pre>
         </div>
