@@ -665,8 +665,14 @@ export function useTypingGame(
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (!isGameEnded && e.key.length === 1) {
+        const expectedChar =
+          alignment.promptCursor < displayText.length
+            ? displayText[alignment.promptCursor]
+            : undefined;
+        const kind: "correct" | "incorrect" =
+          expectedChar != null && e.key === expectedChar ? "correct" : "incorrect";
         const id = ++keymapReactFlashIdRef.current;
-        setKeymapReactFlashes((prev) => [...prev, { id, ch: e.key }]);
+        setKeymapReactFlashes((prev) => [...prev, { id, ch: e.key, kind }]);
         const tid = window.setTimeout(() => {
           setKeymapReactFlashes((prev) => prev.filter((f) => f.id !== id));
           keymapReactFlashTimeoutsRef.current.delete(id);

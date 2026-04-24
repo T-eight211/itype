@@ -3,5 +3,6 @@
   "keyboardLayout": "qwerty",
   "legendStyle": "lowercase",
   "showTopRow": "layout-dependent",
-  "keymapSize": 1
+  "keymapSize": 1,
+  "showHandsOverlay": true
 }

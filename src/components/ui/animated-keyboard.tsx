@@ -146,6 +146,12 @@ export const Keycap = memo(function Keycap({
           highlightFullKey &&
             keylightColor === "rgb" &&
             "z-20 ring-2 ring-(--rgb-color) ring-offset-2 ring-offset-background dark:ring-offset-background shadow-[0_0_14px_2px_var(--rgb-color)]",
+          highlightFullKey &&
+            keylightColor === "green" &&
+            "z-20 ring-2 ring-emerald-400 ring-offset-2 ring-offset-background dark:ring-offset-background shadow-[0_0_14px_2px_rgba(16,185,129,0.65)]",
+          highlightFullKey &&
+            keylightColor === "red" &&
+            "z-20 ring-2 ring-red-500 ring-offset-2 ring-offset-background dark:ring-offset-background shadow-[0_0_14px_2px_rgba(239,68,68,0.7)]",
           className
         )}
       >

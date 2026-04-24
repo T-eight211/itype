@@ -24,6 +24,8 @@ import {
   ComboboxValue,
 } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   DEFAULT_USER_KEYMAP_SETTINGS,
@@ -59,6 +61,7 @@ export function SettingsPageContent({ layoutOptions, initialSettings, isAuthenti
   const [legendStyle, setLegendStyle] = React.useState<LegendStyle>(initialSettings.legendStyle);
   const [showTopRow, setShowTopRow] = React.useState<ShowTopRow>(initialSettings.showTopRow);
   const [keymapSize, setKeymapSize] = React.useState(initialSettings.keymapSize);
+  const [showHandsOverlay, setShowHandsOverlay] = React.useState(initialSettings.showHandsOverlay);
   const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved" | "error">("idle");
   const [resetDialogOpen, setResetDialogOpen] = React.useState(false);
   const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -75,6 +78,7 @@ export function SettingsPageContent({ layoutOptions, initialSettings, isAuthenti
       setLegendStyle(normalized.legendStyle);
       setShowTopRow(normalized.showTopRow);
       setKeymapSize(normalized.keymapSize);
+      setShowHandsOverlay(normalized.showHandsOverlay);
     } catch {
       // Ignore malformed local data and keep server/default values.
     }
@@ -131,8 +135,17 @@ export function SettingsPageContent({ layoutOptions, initialSettings, isAuthenti
       legendStyle,
       showTopRow,
       keymapSize,
+      showHandsOverlay,
     });
-  }, [persistKeymapSettings, keymapDisplay, keyboardLayout, legendStyle, showTopRow, keymapSize]);
+  }, [
+    persistKeymapSettings,
+    keymapDisplay,
+    keyboardLayout,
+    legendStyle,
+    showTopRow,
+    keymapSize,
+    showHandsOverlay,
+  ]);
 
   const handleResetConfirmed = React.useCallback(() => {
     const defaults = normalizeUserSettings(DEFAULT_USER_KEYMAP_SETTINGS, layoutOptions);
@@ -141,6 +154,7 @@ export function SettingsPageContent({ layoutOptions, initialSettings, isAuthenti
     setLegendStyle(defaults.legendStyle);
     setShowTopRow(defaults.showTopRow);
     setKeymapSize(defaults.keymapSize);
+    setShowHandsOverlay(defaults.showHandsOverlay);
     setResetDialogOpen(false);
     void persistKeymapSettings(defaults);
   }, [layoutOptions, persistKeymapSettings]);
@@ -250,19 +264,47 @@ export function SettingsPageContent({ layoutOptions, initialSettings, isAuthenti
                   <Label className="text-xs text-muted-foreground">keymap size</Label>
                   <p className="text-sm text-muted-foreground">Change the size of the keymap.</p>
                   <div className="flex items-center gap-4">
-                    <span className="w-12 text-sm font-mono text-muted-foreground">{keymapSize.toFixed(1)}</span>
-                    <input
+                    <span className="w-12 text-sm font-mono text-muted-foreground">
+                      {keymapSize.toFixed(1)}
+                    </span>
+                    <Slider
                       aria-label="keymap size"
-                      type="range"
                       min={0.5}
                       max={1.5}
                       step={0.1}
-                      value={keymapSize}
-                      onChange={(e) => setKeymapSize(Number(e.target.value))}
-                      className="h-2 w-full cursor-pointer accent-primary"
+                      value={[keymapSize]}
+                      onValueChange={(values) => {
+                        const next = values[0];
+                        if (typeof next === "number") setKeymapSize(next);
+                      }}
+                      className="w-full"
                     />
                   </div>
                 </section>
+
+                {keymapDisplay === "next" && keyboardLayout === "qwerty" ? (
+                  <section className="space-y-2">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <Label
+                          htmlFor="show-hands-overlay"
+                          className="text-xs text-muted-foreground"
+                        >
+                          show touch‑typing hands
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Show hands over the keymap to guide finger placement.
+                        </p>
+                      </div>
+                      <Switch
+                        id="show-hands-overlay"
+                        checked={showHandsOverlay}
+                        onCheckedChange={setShowHandsOverlay}
+                        aria-label="show touch-typing hands"
+                      />
+                    </div>
+                  </section>
+                ) : null}
               </>
             ) : null}
 

@@ -54,6 +54,7 @@ model UserSettings {
   keymap_legend_style KeymapLegendStyle @default(blank)
   keymap_top_row_mode KeymapTopRowMode  @default(always)
   keymap_size         Float             @default(1.0)
+  show_hands_overlay  Boolean           @default(true)
 
   created_at DateTime @default(now()) @db.Timestamptz(6)
   updated_at DateTime @updatedAt @db.Timestamptz(6)

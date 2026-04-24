@@ -5,6 +5,7 @@ import type { KeyboardLayoutData, KeyTuple } from "@/features/typing-game/lib/ke
 import { computeKeymapTopRowVisible } from "@/features/typing-game/lib/compute-keymap-top-row-visible";
 import { keyTupleMatchesChar } from "@/features/typing-game/lib/key-tuple-matches-char";
 import type { KeymapReactFlash } from "@/features/typing-game/lib/keymap-react-flash";
+import { TypingGameHandsOverlay } from "@/features/typing-game/components/typing-game-hands-overlay";
 import type { KeymapDisplay, LegendStyle, ShowTopRow } from "@/features/settings/lib/user-settings";
 import { cn } from "@/lib/utils";
 
@@ -92,20 +93,32 @@ function buildRows(layout: KeyboardLayoutData, showNumberRow: boolean): RowEntry
   return all;
 }
 
-function keycapIsRgbHighlighted(
+type KeycapHighlight = "rgb" | "correct" | "incorrect" | null;
+
+function keycapHighlight(
   keymapDisplay: KeymapDisplay,
   nextHighlightChar: string | null | undefined,
   reactFlashes: readonly KeymapReactFlash[],
   key: KeyTuple
-): boolean {
+): KeycapHighlight {
   if (keymapDisplay === "next") {
-    if (!nextHighlightChar) return false;
-    return keyTupleMatchesChar(key, nextHighlightChar);
+    if (!nextHighlightChar) return null;
+    return keyTupleMatchesChar(key, nextHighlightChar) ? "rgb" : null;
   }
   if (keymapDisplay === "react") {
-    return reactFlashes.some((f) => keyTupleMatchesChar(key, f.ch));
+    const matching = reactFlashes.filter((f) => keyTupleMatchesChar(key, f.ch));
+    if (matching.length === 0) return null;
+    // Wrong keypress dominates over a concurrent correct one so errors stay visible.
+    return matching.some((f) => f.kind === "incorrect") ? "incorrect" : "correct";
   }
-  return false;
+  return null;
+}
+
+function highlightToKeylightColor(h: KeycapHighlight): "default" | "rgb" | "green" | "red" {
+  if (h === "rgb") return "rgb";
+  if (h === "correct") return "green";
+  if (h === "incorrect") return "red";
+  return "default";
 }
 
 function LayoutKeyRow({
@@ -132,7 +145,9 @@ function LayoutKeyRow({
     <KeyRow gap="md" className={pl}>
       {row.keys.map((key, idx) => {
         const keyId = `${row.physicalRow}-${idx}-${key[0] ?? "∅"}`;
-        const rgbOn = keycapIsRgbHighlighted(keymapDisplay, nextHighlightChar, reactFlashes, key);
+        const highlight = keycapHighlight(keymapDisplay, nextHighlightChar, reactFlashes, key);
+        const keylightColor = highlightToKeylightColor(highlight);
+        const isHighlighted = highlight !== null;
         if ((key[0] ?? "") === " ") {
           return (
             <Keycap
@@ -141,8 +156,8 @@ function LayoutKeyRow({
               variant="space"
               height={KEY_HEIGHT}
               className="w-[340px]"
-              keylightColor={rgbOn ? "rgb" : "default"}
-              highlightFullKey={rgbOn}
+              keylightColor={keylightColor}
+              highlightFullKey={isHighlighted}
             />
           );
         }
@@ -152,8 +167,8 @@ function LayoutKeyRow({
             char={legendToChar(key, legendStyle, isCapsLockOn, isShiftPressed)}
             height={KEY_HEIGHT}
             className="w-12"
-            keylightColor={rgbOn ? "rgb" : "default"}
-            highlightFullKey={rgbOn}
+            keylightColor={keylightColor}
+            highlightFullKey={isHighlighted}
           />
         );
       })}
@@ -176,6 +191,8 @@ type Props = {
   keymapSize: number;
   isCapsLockOn: boolean;
   isShiftPressed: boolean;
+  /** Show the touch-typing hands overlay (only enabled by parent for QWERTY + `next`). */
+  showHandsOverlay?: boolean;
   className?: string;
 };
 
@@ -190,6 +207,7 @@ export function TypingGameLayoutKeyboard({
   keymapSize,
   isCapsLockOn,
   isShiftPressed,
+  showHandsOverlay = false,
   className,
 }: Props) {
   const layoutType = layout.type === "iso" ? "iso" : "ansi";
@@ -213,20 +231,28 @@ export function TypingGameLayoutKeyboard({
       }}
     >
       <div className="mx-auto w-fit scale-75 sm:scale-90 md:scale-100">
-        <div className="flex flex-col gap-2.5 px-1 py-1">
-          {rows.map((row) => (
-            <LayoutKeyRow
-              key={row.physicalRow}
-              row={row}
-              layoutType={layoutType}
-              legendStyle={legendStyle}
-              isCapsLockOn={isCapsLockOn}
-              isShiftPressed={isShiftPressed}
-              keymapDisplay={keymapDisplay}
-              nextHighlightChar={nextHighlightChar}
-              reactFlashes={reactFlashes}
+        <div className="relative">
+          <div className="flex flex-col gap-2.5 px-1 py-1">
+            {rows.map((row) => (
+              <LayoutKeyRow
+                key={row.physicalRow}
+                row={row}
+                layoutType={layoutType}
+                legendStyle={legendStyle}
+                isCapsLockOn={isCapsLockOn}
+                isShiftPressed={isShiftPressed}
+                keymapDisplay={keymapDisplay}
+                nextHighlightChar={nextHighlightChar}
+                reactFlashes={reactFlashes}
+              />
+            ))}
+          </div>
+          {showHandsOverlay && keymapDisplay === "next" && (
+            <TypingGameHandsOverlay
+              activeChar={nextHighlightChar}
+              showNumberRow={showNumberRow}
             />
-          ))}
+          )}
         </div>
       </div>
     </div>

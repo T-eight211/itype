@@ -10,6 +10,8 @@ export type UserKeymapSettings = {
   legendStyle: LegendStyle;
   showTopRow: ShowTopRow;
   keymapSize: number;
+  /** Show touch-typing SVG hands over the keymap (QWERTY + `next` mode only). */
+  showHandsOverlay: boolean;
 };
 
 export const LOCAL_USER_SETTINGS_STORAGE_KEY = "itype:user-settings:v1";
@@ -33,10 +35,16 @@ export function normalizeUserSettings(
     ? Math.min(1.5, Math.max(0.5, settings.keymapSize))
     : DEFAULT_USER_KEYMAP_SETTINGS.keymapSize;
 
+  const showHandsOverlay =
+    typeof settings.showHandsOverlay === "boolean"
+      ? settings.showHandsOverlay
+      : DEFAULT_USER_KEYMAP_SETTINGS.showHandsOverlay;
+
   return {
     ...settings,
     keyboardLayout,
     keymapSize,
+    showHandsOverlay,
   };
 }
 

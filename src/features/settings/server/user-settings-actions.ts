@@ -26,6 +26,7 @@ function toUiSettings(
     keymap_legend_style: "lowercase" | "uppercase" | "blank" | "dynamic";
     keymap_top_row_mode: DbTopRowMode;
     keymap_size: number;
+    show_hands_overlay: boolean;
   },
   layoutOptions: string[]
 ): UserKeymapSettings {
@@ -36,6 +37,7 @@ function toUiSettings(
       legendStyle: row.keymap_legend_style,
       showTopRow: toUiTopRowMode(row.keymap_top_row_mode),
       keymapSize: row.keymap_size,
+      showHandsOverlay: row.show_hands_overlay,
     },
     layoutOptions
   );
@@ -59,6 +61,7 @@ export async function getUserKeymapSettings(
       keymap_legend_style: true,
       keymap_top_row_mode: true,
       keymap_size: true,
+      show_hands_overlay: true,
     },
   });
 
@@ -75,6 +78,7 @@ export async function getUserKeymapSettings(
         keymap_legend_style: row.keymap_legend_style,
         keymap_top_row_mode: row.keymap_top_row_mode as DbTopRowMode,
         keymap_size: row.keymap_size,
+        show_hands_overlay: row.show_hands_overlay,
       },
       layoutOptions
     ),
@@ -106,6 +110,7 @@ export async function saveUserKeymapSettingsAction(
         keymap_legend_style: normalized.legendStyle,
         keymap_top_row_mode: toDbTopRowMode(normalized.showTopRow),
         keymap_size: normalized.keymapSize,
+        show_hands_overlay: normalized.showHandsOverlay,
       },
       update: {
         keymap_display_mode: normalized.keymapDisplay,
@@ -113,6 +118,7 @@ export async function saveUserKeymapSettingsAction(
         keymap_legend_style: normalized.legendStyle,
         keymap_top_row_mode: toDbTopRowMode(normalized.showTopRow),
         keymap_size: normalized.keymapSize,
+        show_hands_overlay: normalized.showHandsOverlay,
       },
     });
   });

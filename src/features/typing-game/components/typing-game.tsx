@@ -681,13 +681,14 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
         </div>
       </div>
       <div className="mx-auto mt-2 h-5 w-full max-w-5xl">
-        {game.isCapsLockOn ? (
+        {!game.isGameEnded && game.isCapsLockOn ? (
           <p className="text-center text-sm font-medium text-amber-500">Caps Lock is ON</p>
         ) : null}
       </div>
       {keymap.status === "ready" &&
         keymap.settings.keymapDisplay !== "off" &&
-        keymap.layout && (
+        keymap.layout &&
+        !game.isGameEnded && (
           <TypingGameLayoutKeyboard
             layout={keymap.layout}
             showTopRowSetting={keymap.settings.showTopRow}
@@ -703,6 +704,11 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
             keymapSize={keymap.settings.keymapSize}
             isCapsLockOn={game.isCapsLockOn}
             isShiftPressed={game.isShiftPressed}
+            showHandsOverlay={
+              keymap.settings.keymapDisplay === "next" &&
+              keymap.layoutFileName === "qwerty" &&
+              keymap.settings.showHandsOverlay
+            }
           />
         )}
 
