@@ -24,9 +24,8 @@ export function StatsLeaderboardCard({ rank, topPercent }: StatsLeaderboardCardP
     <Card className="w-full rounded-[28px] border-border bg-background/40 shadow-lg backdrop-blur-sm">
       <CardHeader className="pb-3">
         <CardTitle className="text-xl font-semibold tracking-tight text-foreground">
-          All-time leaderboard
+          All-Time 15 seconds
         </CardTitle>
-        <p className="text-sm text-muted-foreground">15 seconds</p>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-2xl border border-border/50 bg-muted/20 px-5 py-6">

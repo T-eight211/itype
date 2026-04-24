@@ -19,6 +19,8 @@ model User {
   leaderboard_daily_60s      LeaderboardDaily60s[]
   leaderboard_daily_15s      LeaderboardDaily15s[]
   settings                   UserSettings?
+  user_xp                    UserXp?
+  badges                     UserBadge[]
 
   @@map("users")
 }
@@ -41,6 +43,28 @@ enum KeymapTopRowMode {
   always
   layout_dependent
   never
+}
+
+model UserXp {
+  id                    Int       @id @default(autoincrement())
+
+  user_id               String    @unique
+  user                  User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  total_xp              Int       @default(0)
+  current_level         Int       @default(0)
+
+  current_streak_days   Int       @default(0)
+  max_streak_days       Int       @default(0)
+  last_streak_date      DateTime? @db.Date
+
+  last_daily_bonus_date DateTime? @db.Date
+
+  created_at            DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@index([user_id])
+  @@map("user_xp")
 }
 
 model UserSettings {
@@ -137,8 +161,30 @@ model TypingResults {
   leaderboard_daily_60s    LeaderboardDaily60s?
   leaderboard_daily_15s    LeaderboardDaily15s?
 
+  badges UserBadge[]
+
   @@index([user_id])
   @@map("typing_results")
+}
+
+model UserBadge {
+  id               Int       @id @default(autoincrement())
+
+  user_id          String
+  user             User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  badge_key        String
+  unlocked_at      DateTime  @default(now()) @db.Timestamptz(6)
+
+  source_result_id Int?
+  source_result    TypingResults? @relation(fields: [source_result_id], references: [id], onDelete: SetNull)
+
+  metadata         Json?
+
+  @@unique([user_id, badge_key])
+  @@index([user_id])
+  @@index([user_id, unlocked_at])
+  @@map("user_badges")
 }
 
 model WordMistake {

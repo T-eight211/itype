@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/navigation-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { BarChart3, Settings, User } from "lucide-react";
+import { XpAwardedFlyout } from "@/features/xp/components/xp-awarded-flyout";
 
 const gameModes = [
   { title: "Time", href: "/game?mode=time", description: "Type for a set duration." },
@@ -25,9 +26,9 @@ export default function Header() {
   const { isLoaded } = useUser();
 
   return (
-    <header className="sticky top-0 z-50 px-4 sm:px-6 lg:px-8 py-4 bg-transparent">
-      <div className="mx-auto max-w-screen-2xl bg-background/30 backdrop-blur-sm border border-border shadow-lg rounded-2xl">
-        <div className="flex items-center justify-between gap-4 px-6 py-2 md:grid md:grid-cols-[1fr_auto_1fr] md:justify-normal">
+    <header className="sticky top-0 z-50 overflow-visible px-4 py-4 sm:px-6 lg:px-8 bg-transparent">
+      <div className="mx-auto max-w-screen-2xl overflow-visible rounded-2xl border border-border bg-background/30 shadow-lg backdrop-blur-sm">
+        <div className="flex items-center justify-between gap-4 overflow-visible px-6 py-2 md:grid md:grid-cols-[1fr_auto_1fr] md:justify-normal">
           <Link href="/" className="flex items-center justify-start">
             <Logo />
           </Link>
@@ -89,20 +90,23 @@ export default function Header() {
                 </div>
               </SignedOut>
               <SignedIn>
-                <UserButton afterSignOutUrl="/">
-                  <UserButton.MenuItems>
-                    <UserButton.Link
-                      href="/stats"
-                      label="Stats"
-                      labelIcon={<BarChart3 className="size-4" />}
-                    />
-                    <UserButton.Link
-                      href="/settings"
-                      label="Settings"
-                      labelIcon={<Settings className="size-4" />}
-                    />
-                  </UserButton.MenuItems>
-                </UserButton>
+                <div className="relative flex items-center overflow-visible">
+                  <XpAwardedFlyout />
+                  <UserButton afterSignOutUrl="/">
+                    <UserButton.MenuItems>
+                      <UserButton.Link
+                        href="/stats"
+                        label="Stats"
+                        labelIcon={<BarChart3 className="size-4" />}
+                      />
+                      <UserButton.Link
+                        href="/settings"
+                        label="Settings"
+                        labelIcon={<Settings className="size-4" />}
+                      />
+                    </UserButton.MenuItems>
+                  </UserButton>
+                </div>
               </SignedIn>
             </div>
           )}

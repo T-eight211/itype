@@ -31,6 +31,17 @@ import { saveWordMistakes } from "../server/save-word-mistakes";
 import type { WordMistake } from "../schemas/word-mistake";
 import type { WordWrapGateFn } from "../components/word-wrap-gate";
 import type { KeymapReactFlash } from "../lib/keymap-react-flash";
+import {
+  appendIncompleteRun,
+  takeAllIncompleteRuns,
+} from "@/features/xp/lib/incomplete-buffer";
+import { INCOMPLETE_MIN_SECONDS } from "@/features/xp/lib/xp-constants";
+import {
+  awardXpForTypingResult,
+  type AwardXpSuccess,
+} from "@/features/xp/server/award-xp-for-typing-result";
+import { emitXpAwarded } from "@/features/xp/lib/xp-events";
+import { awardBadgesForTypingResult } from "@/features/badges/server/award-badges-for-typing-result";
 
 export type GameMode = "time" | "words" | "quote";
 export type QuoteLength = "all" | "short" | "medium" | "long" | "thicc";
@@ -89,9 +100,9 @@ export function useTypingGame(
   const [incorrectHistory, setIncorrectHistory] = useState<number[]>([]);
   const [consistency, setConsistency] = useState<number | null>(null);
   const [wordMistakes, setWordMistakes] = useState<WordMistake[]>([]);
+  const [xpAward, setXpAward] = useState<AwardXpSuccess | null>(null);
   const [isCapsLockOn, setIsCapsLockOn] = useState(false);
   const [isShiftPressed, setIsShiftPressed] = useState(false);
-  /** Overlapping printable-key flashes for keymap “react” (each expires on its own timer). */
   const [keymapReactFlashes, setKeymapReactFlashes] = useState<KeymapReactFlash[]>([]);
   const keymapReactFlashIdRef = useRef(0);
   const keymapReactFlashTimeoutsRef = useRef<Map<number, number>>(new Map());
@@ -106,6 +117,7 @@ export function useTypingGame(
   const keysPressedThisSecondRef = useRef<number>(0);
   const incorrectAtLastTickRef = useRef<number>(0);
   const incorrectKeystrokesRef = useRef<number>(0);
+  const correctKeystrokesRef = useRef<number>(0);
   const startPerformanceTimeRef = useRef<number>(0);
   const hasSavedResultRef = useRef(false);
   const endGameFinalizedRef = useRef(false);
@@ -116,6 +128,19 @@ export function useTypingGame(
 
 
   const errorCollector = useErrorCollector();
+
+  const captureAbandonedRunIfAny = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (!startPerformanceTimeRef.current) return;
+    if (hasSavedResultRef.current) return;
+    const seconds = (performance.now() - startPerformanceTimeRef.current) / 1000;
+    if (seconds < INCOMPLETE_MIN_SECONDS) return;
+    const acc = computeAccuracy(
+      correctKeystrokesRef.current,
+      incorrectKeystrokesRef.current
+    );
+    appendIncompleteRun({ seconds, accuracy: acc });
+  }, []);
 
   const clearAllKeymapReactFlashes = useCallback(() => {
     keymapReactFlashTimeoutsRef.current.forEach((tid) => window.clearTimeout(tid));
@@ -266,6 +291,7 @@ export function useTypingGame(
   useEffect(() => { displayTextRef.current = displayText; }, [displayText]);
   useEffect(() => { rawInputRef.current = rawInput; }, [rawInput]);
   useEffect(() => { incorrectKeystrokesRef.current = incorrectKeystrokes; }, [incorrectKeystrokes]);
+  useEffect(() => { correctKeystrokesRef.current = correctKeystrokes; }, [correctKeystrokes]);
   useEffect(() => { burstWpmRef.current = burstWpm; }, [burstWpm]);
   useEffect(() => { wpmHistoryRef.current = wpmHistory; }, [wpmHistory]);
   useEffect(() => { rawWpmHistoryRef.current = rawWpmHistory; }, [rawWpmHistory]);
@@ -292,6 +318,21 @@ export function useTypingGame(
   useEffect(() => {
     return scheduleTextareaFocus(textareaRef, setIsInputFocused);
   }, [settingsKey, regenKey]);
+
+  useEffect(() => {
+    return () => {
+      captureAbandonedRunIfAny();
+    };
+  }, [settingsKey, regenKey, captureAbandonedRunIfAny]);
+
+  useEffect(() => {
+    const handler = () => captureAbandonedRunIfAny();
+    window.addEventListener("beforeunload", handler);
+    return () => {
+      window.removeEventListener("beforeunload", handler);
+      captureAbandonedRunIfAny();
+    };
+  }, [captureAbandonedRunIfAny]);
 
 
   useEffect(() => {
@@ -330,6 +371,7 @@ export function useTypingGame(
     setIncorrectHistory([]);
     setConsistency(null);
     setWordMistakes([]);
+    setXpAward(null);
     clearAllKeymapReactFlashes();
     hasSavedResultRef.current = false;
     endGameFinalizedRef.current = false;
@@ -477,6 +519,23 @@ export function useTypingGame(
         (m) => m.word_error_events.length > 0
       );
 
+      const hadMistakeDuringRun = incorrectKeystrokesRef.current > 0;
+      const hasUnresolvedCellsAtEnd = finalAlignment.cells.some(
+        (cell) =>
+          (cell.type === "prompt" && cell.status === "wrong") ||
+          cell.type === "extra"
+      );
+      const hasUnresolvedWordsAtEnd = finalizedMistakes.some(
+        (m) =>
+          m.final_status === "incorrect" ||
+          m.final_status === "extra" ||
+          m.final_status === "skipped"
+      );
+      const cleanRun =
+        hadMistakeDuringRun &&
+        !hasUnresolvedCellsAtEnd &&
+        !hasUnresolvedWordsAtEnd;
+
       saveTypingResult({
         wpm: roundTo2(finalWpmVal),
         rawWpm: roundTo2(charsToWpm(rawChars, finalSeconds)),
@@ -496,11 +555,35 @@ export function useTypingGame(
         incorrectHistory: incorrectHistoryFinal,
       })
         .then(async (res) => {
-          if ("typingResultId" in res && res.typingResultId && mistakesToSave.length > 0) {
-            await saveWordMistakes({
-              typing_result_id: res.typingResultId,
-              word_mistakes: mistakesToSave,
+          if ("typingResultId" in res && res.typingResultId) {
+            if (mistakesToSave.length > 0) {
+              await saveWordMistakes({
+                typing_result_id: res.typingResultId,
+                word_mistakes: mistakesToSave,
+              });
+            }
+            const incompleteRuns = takeAllIncompleteRuns();
+            const xpResult = await awardXpForTypingResult({
+              typingResultId: res.typingResultId,
+              elapsedSeconds: finalSeconds,
+              accuracy: roundTo2(accuracyVal),
+              mode,
+              punctuation,
+              numbers,
+              cleanRun,
+              incompleteRuns,
             });
+            if (xpResult.ok) {
+              setXpAward(xpResult);
+              emitXpAwarded(xpResult);
+              await awardBadgesForTypingResult({
+                typingResultId: res.typingResultId,
+                wpm: roundTo2(finalWpmVal),
+                accuracy: roundTo2(accuracyVal),
+                currentStreakDays: xpResult.streakAfter,
+                level: xpResult.levelAfter,
+              });
+            }
           }
           await scheduleMaybeFirstTypingCoachRun();
         })
@@ -681,7 +764,6 @@ export function useTypingGame(
       }
 
       if (e.key === "CapsLock") {
-        // CapsLock toggles on key press; derive next state directly to avoid inverted reads.
         setIsCapsLockOn((prev) => !prev);
       } else {
         setIsCapsLockOn(e.getModifierState("CapsLock"));
@@ -753,6 +835,7 @@ export function useTypingGame(
     consistency,
     completedWordsCount, totalWordsCount,
     wordMistakes,
+    xpAward,
 
     alignment,
     measureStr,
