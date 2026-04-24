@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import {
   BADGES,
   type BadgeCategory,
-  type BadgeDefinition,
   type BadgeKey,
 } from "@/features/badges/lib/badges";
 import { xpProgressToNextLevel } from "@/features/xp/lib/level";
@@ -73,7 +72,9 @@ const BADGE_CATEGORIES: BadgeCategory[] = [
   "special",
 ];
 
-const BADGE_BY_KEY = new Map<BadgeKey, BadgeDefinition>(
+type BadgeRecord = (typeof BADGES)[number];
+
+const BADGE_BY_KEY = new Map<BadgeKey, BadgeRecord>(
   BADGES.map((badge) => [badge.key, badge]),
 );
 
