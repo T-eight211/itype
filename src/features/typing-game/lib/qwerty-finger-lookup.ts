@@ -6,9 +6,9 @@ export type Finger = "pinky" | "ring" | "middle" | "index" | "thumb";
 export type QwertyFingerInfo = {
   hand: Hand;
   finger: Finger;
-  /** Geometry x of the target key (in key-step units; one unit = 58px on screen). */
+
   x: number;
-  /** Geometry y of the target key (-1 number, 0 top, 1 home, 2 bottom, 3 space). */
+ 
   y: number;
 };
 
@@ -47,11 +47,7 @@ function getMap(): Map<string, QwertyFingerInfo> {
   return cachedMap;
 }
 
-/**
- * Look up which hand+finger should press the given character on a US QWERTY keyboard.
- * Falls through shifted variants and case before giving up. Returns null for chars
- * outside the standard letter/number/symbol set (e.g. control chars).
- */
+
 export function lookupQwertyFinger(ch: string | null | undefined): QwertyFingerInfo | null {
   if (ch == null || ch === "") return null;
   const map = getMap();

@@ -1,6 +1,5 @@
 import type { KeyTuple } from "@/features/typing-game/lib/keyboard-layout-types";
 
-/** True if any legend slot on this key equals the typed/next character (letters are case-insensitive). */
 export function keyTupleMatchesChar(tuple: KeyTuple, ch: string | null | undefined): boolean {
   if (ch == null || ch === "") return false;
   if (ch === " ") return tuple.some((s) => s === " ");

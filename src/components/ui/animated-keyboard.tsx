@@ -12,7 +12,6 @@ interface CSSCustomProperties extends React.CSSProperties {
 type KeycapProps = {
   height?: string
   keylightColor?: "default" | "red" | "blue" | "green" | "purple" | "rgb"
-  /** When true (e.g. react/next keymap match), draws a full-key outline/glow around the entire cap. */
   highlightFullKey?: boolean
   char?: string
   secondaryChar?: string

@@ -80,7 +80,7 @@ export function SettingsPageContent({ layoutOptions, initialSettings, isAuthenti
       setKeymapSize(normalized.keymapSize);
       setShowHandsOverlay(normalized.showHandsOverlay);
     } catch {
-      // Ignore malformed local data and keep server/default values.
+    
     }
   }, [isAuthenticated, layoutOptions]);
 

@@ -395,8 +395,7 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
               return;
             }
             setCoachPopoverOpen(open);
-            // Only the effect above schedules the 8s auto-close + hover lock (first show per
-            // feedback key). User-driven hovers after that behave like a normal HoverCard.
+          
             if (!open) {
               clearCoachPopoverTimer();
             }

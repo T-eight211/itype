@@ -8,43 +8,32 @@ import {
 import { cn } from "@/lib/utils";
 
 const HAND_W = 280;
-// Sized so that with the SVG anchored at home-row top, the palm bottom lands
-// approximately on the keyboard's bottom edge (no number row: ~227px, with
-// number row: ~285px). This keeps the entire hand within the keyboard's
-// footprint instead of spilling below it.
+
 const HAND_H = 165;
 
-// One key column step in pixels (48px keycap + 10px gap).
+
 const KEY_STEP_PX = 58;
 
-// Finger column centres (px) in the LEFT-hand SVG viewBox. When the hand SVG's
-// left edge is anchored to the home row 'a' key column, these align with the
-// home-row key centres: pinky→a, ring→s, middle→d, index→f. The right hand is
-// rendered with `scale-x-[-1]` so the same coordinates mirror to j/k/l/;.
+
 const FINGER_X: Record<"pinky" | "ring" | "middle" | "index", number> = {
   pinky: 24,
   ring: 82,
   middle: 140,
   index: 198,
 };
-// Top (tip) Y of each finger in SVG coords. With the SVG anchored at home-row
-// top, these put the fingertips inside the home row (y ~12-40 → container y
-// ~74-102, which is mid home row).
+
 const FINGER_TOP_Y: Record<"pinky" | "ring" | "middle" | "index", number> = {
   pinky: 40,
   ring: 24,
   middle: 12,
   index: 22,
 };
-// Bottom of the finger rect (also the visual top of the palm).
+
 const FINGER_BOTTOM_Y = 105;
 const FINGER_W = 26;
 
-// Palm geometry (rounded rectangle behind the fingers).
 const PALM = { x: 6, y: 100, w: 210, h: 60, rx: 30 } as const;
 
-// Thumb geometry (rounded rect tilted off the right side of the LEFT hand;
-// mirrored to the left side of the RIGHT hand by the SVG-level scaleX(-1)).
 const THUMB = {
   x: 188,
   y: 118,
@@ -60,8 +49,7 @@ const HOME_ROW_TOP_WITH_NUMBER = HOME_ROW_TOP_NO_NUMBER + 48 + 10;
 const LEFT_HAND_LEFT = 52;
 const RIGHT_HAND_LEFT = 342;
 
-// Home positions (in geometry units) for each hand+finger. Used to compute the
-// pixel delta to translate the active finger toward the target key.
+
 const HOME_POS: Record<"left" | "right", Record<Finger, { x: number; y: number }>> = {
   left: {
     pinky: { x: 0.5, y: 1 },
@@ -131,9 +119,7 @@ function ThumbGroup({
   active: boolean;
   delta: Delta | null;
 }) {
-  // For the right hand the SVG itself is mirrored, so the thumb visually appears
-  // on the left of the palm. The screen-space delta is converted to SVG space
-  // (negate dx for the mirrored hand) by the caller.
+
   const transform =
     active && delta != null && (delta.dx !== 0 || delta.dy !== 0)
       ? `translate(${delta.dx} ${delta.dy})`
@@ -172,11 +158,10 @@ function HandSvg({
 }: {
   side: Side;
   activeFinger: Finger | null;
-  /** Screen-space delta (positive dx = right on screen). */
+
   fingerDelta: Delta | null;
 }) {
-  // Inside the SVG, the right hand is visually mirrored via CSS scaleX(-1), so a
-  // positive screen-space dx must be negated to land on the right key.
+
   const svgDelta: Delta | null =
     fingerDelta != null
       ? { dx: side === "right" ? -fingerDelta.dx : fingerDelta.dx, dy: fingerDelta.dy }
@@ -188,8 +173,7 @@ function HandSvg({
       width={HAND_W}
       height={HAND_H}
       aria-hidden="true"
-      // overflow-visible: allow finger groups translated above y=0 (i.e. up to
-      // the top/number rows) to render outside the SVG's nominal viewBox.
+      
       style={{ overflow: "visible" }}
       className={cn("pointer-events-none block", side === "right" && "transform-[scaleX(-1)]")}
     >
