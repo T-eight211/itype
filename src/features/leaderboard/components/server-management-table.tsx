@@ -22,6 +22,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface ServerManagementTableProps {
@@ -157,6 +158,25 @@ function formatTopPercentLabel(rank: number, total: number): string {
   if (rank === 1) return "0";
   if (rank === total) return "100";
   return (((rank - 1) / total) * 100).toFixed(2);
+}
+
+function badgeCategoryClassName(category: string) {
+  switch (category) {
+    case "speed":
+      return "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300";
+    case "accuracy":
+      return "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300";
+    case "streak":
+      return "bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300";
+    case "level":
+      return "bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300";
+    case "practice":
+      return "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300";
+    case "special":
+      return "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300";
+    default:
+      return "bg-muted text-foreground";
+  }
 }
 
 function ViewerCardIdentity({ viewer }: { viewer: LeaderboardViewerSnapshot }) {
@@ -427,7 +447,7 @@ export function ServerManagementTable({
                 }}
                 className={cn(
                   "relative cursor-pointer rounded-xl",
-                  isYou && "z-[1] ring-2 ring-primary ring-offset-2 ring-offset-background",
+                  isYou && "z-1 ring-2 ring-primary ring-offset-2 ring-offset-background",
                 )}
                 data-current-user={isYou ? "true" : undefined}
                 aria-current={isYou ? "true" : undefined}
@@ -474,12 +494,28 @@ export function ServerManagementTable({
                           {avatarFallback(row.username)}
                         </div>
                       )}
-                      <span className="text-foreground font-medium truncate">{row.username}</span>
-                      {isYou ? (
-                        <span className="shrink-0 rounded-md border border-primary/50 bg-primary/25 px-2 py-0.5 text-xs font-semibold text-primary">
-                          You
-                        </span>
-                      ) : null}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-foreground font-medium truncate">{row.username}</span>
+                          {isYou ? (
+                            <span className="shrink-0 rounded-md border border-primary/50 bg-primary/25 px-2 py-0.5 text-xs font-semibold text-primary">
+                              You
+                            </span>
+                          ) : null}
+                        </div>
+                        {row.topBadges.length > 0 ? (
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {row.topBadges.slice(0, 3).map((badge) => (
+                              <Badge
+                                key={`${row.userId}-${badge.key}`}
+                                className={`border px-2 py-0 text-[10px] ${badgeCategoryClassName(badge.category)}`}
+                              >
+                                {badge.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
 
                     <div className="col-span-1 text-foreground font-mono font-medium">{formatScore(row.wpm)}</div>
@@ -615,6 +651,21 @@ export function ServerManagementTable({
                     </span>
                   </div>
                 </div>
+                {selectedRow.topBadges.length > 0 ? (
+                  <div className="bg-muted/40 rounded-lg p-3 border border-border/30">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 block">Badges</label>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedRow.topBadges.map((badge) => (
+                        <Badge
+                          key={`${selectedRow.userId}-${badge.key}`}
+                          className={`border ${badgeCategoryClassName(badge.category)}`}
+                        >
+                          {badge.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </motion.div>
           )}

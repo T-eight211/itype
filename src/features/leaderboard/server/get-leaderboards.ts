@@ -1,6 +1,7 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { utcCalendarDateFromInstant } from "@/features/typing-game/server/upsert-daily-leaderboards";
+import { BADGES, type BadgeCategory, type BadgeKey } from "@/features/badges/lib/badges";
 import {
   DAILY_LEADERBOARD_MAX,
   LEADERBOARD_PAGE_SIZE,
@@ -22,6 +23,11 @@ export type LeaderboardRow = {
   accuracy: number;
   consistency: number | null;
   endedAt: string;
+  topBadges: Array<{
+    key: BadgeKey;
+    name: string;
+    category: BadgeCategory;
+  }>;
 };
 
 export { DAILY_LEADERBOARD_MAX, LEADERBOARD_PAGE_SIZE } from "@/features/leaderboard/constants";
@@ -76,6 +82,12 @@ type TypingResultProjection = {
 type UserProfile = {
   username: string;
   profileImageUrl: string | null;
+};
+
+type LeaderboardBadge = {
+  key: BadgeKey;
+  name: string;
+  category: BadgeCategory;
 };
 
 const LEADERBOARD_ORDER = [
@@ -137,9 +149,67 @@ async function getUserProfiles(userIds: string[]): Promise<Map<string, UserProfi
   return profiles;
 }
 
+const BADGE_CATEGORIES: BadgeCategory[] = [
+  "speed",
+  "accuracy",
+  "streak",
+  "level",
+  "practice",
+  "special",
+];
+
+type BadgeRecord = (typeof BADGES)[number];
+const BADGE_BY_KEY = new Map<BadgeKey, BadgeRecord>(
+  BADGES.map((badge) => [badge.key, badge]),
+);
+const BADGE_RANK_BY_KEY = new Map<BadgeKey, number>(
+  BADGES.map((badge, index) => [badge.key, index]),
+);
+
+function topBadgesForUser(earnedBadgeKeys: Set<BadgeKey>): LeaderboardBadge[] {
+  return BADGE_CATEGORIES.flatMap((category) => {
+    const top = BADGES.filter(
+      (badge) => badge.category === category && earnedBadgeKeys.has(badge.key),
+    ).sort(
+      (a, b) =>
+        (BADGE_RANK_BY_KEY.get(b.key) ?? 0) - (BADGE_RANK_BY_KEY.get(a.key) ?? 0),
+    )[0];
+    if (!top) return [];
+    return [{ key: top.key, name: top.name, category: top.category }];
+  });
+}
+
+async function getTopBadgesForUsers(
+  userIds: string[],
+): Promise<Map<string, LeaderboardBadge[]>> {
+  const uniqueIds = Array.from(new Set(userIds)).filter(Boolean);
+  if (uniqueIds.length === 0) return new Map();
+
+  const rows = await prisma.userBadge.findMany({
+    where: { user_id: { in: uniqueIds } },
+    select: { user_id: true, badge_key: true },
+  });
+
+  const keysByUser = new Map<string, Set<BadgeKey>>();
+  for (const row of rows) {
+    if (!BADGE_BY_KEY.has(row.badge_key as BadgeKey)) continue;
+    const userSet = keysByUser.get(row.user_id) ?? new Set<BadgeKey>();
+    userSet.add(row.badge_key as BadgeKey);
+    keysByUser.set(row.user_id, userSet);
+  }
+
+  const result = new Map<string, LeaderboardBadge[]>();
+  for (const userId of uniqueIds) {
+    const earned = keysByUser.get(userId) ?? new Set<BadgeKey>();
+    result.set(userId, topBadgesForUser(earned));
+  }
+  return result;
+}
+
 function toLeaderboardRows(
   typingResults: TypingResultProjection[],
   profiles: Map<string, UserProfile>,
+  topBadgesByUserId: Map<string, LeaderboardBadge[]>,
   rankStart: number
 ): LeaderboardRow[] {
   const normalized = typingResults
@@ -161,6 +231,7 @@ function toLeaderboardRows(
         accuracy: tr.accuracy as number,
         consistency: tr.consistency,
         endedAt: (tr.ended_at as Date).toISOString(),
+        topBadges: topBadgesByUserId.get(tr.user_id) ?? [],
       };
     });
 
@@ -216,9 +287,12 @@ async function mapEntriesToRows(
   rankStart: number
 ): Promise<LeaderboardRow[]> {
   const userIds = entries.map((e) => e.typing_result.user_id);
-  const profiles = await getUserProfiles(userIds);
+  const [profiles, topBadgesByUserId] = await Promise.all([
+    getUserProfiles(userIds),
+    getTopBadgesForUsers(userIds),
+  ]);
   const projections = entries.map((e) => e.typing_result);
-  return toLeaderboardRows(projections, profiles, rankStart);
+  return toLeaderboardRows(projections, profiles, topBadgesByUserId, rankStart);
 }
 
 async function queryAllTime60s(page: number): Promise<LeaderboardPagePayload> {
@@ -348,6 +422,51 @@ export async function getLeaderboardPage(
       return queryDaily60s(p);
     case "daily_15s":
       return queryDaily15s(p);
+  }
+}
+
+export async function getLeaderboardTopRows(
+  board: LeaderboardBoard,
+  take: number
+): Promise<LeaderboardRow[]> {
+  const n = Math.min(Math.max(1, Math.floor(take)), 100);
+  const todayUtc = utcCalendarDateFromInstant(new Date());
+
+  switch (board) {
+    case "all_time_60s": {
+      const entries = await prisma.leaderboardAllTime60s.findMany({
+        take: n,
+        orderBy: LEADERBOARD_ORDER,
+        include: { typing_result: { select: TYPING_RESULT_SELECT } },
+      });
+      return mapEntriesToRows(entries, 1);
+    }
+    case "all_time_15s": {
+      const entries = await prisma.leaderboardAllTime15s.findMany({
+        take: n,
+        orderBy: LEADERBOARD_ORDER,
+        include: { typing_result: { select: TYPING_RESULT_SELECT } },
+      });
+      return mapEntriesToRows(entries, 1);
+    }
+    case "daily_60s": {
+      const entries = await prisma.leaderboardDaily60s.findMany({
+        where: { leaderboard_date: todayUtc },
+        take: n,
+        orderBy: LEADERBOARD_ORDER,
+        include: { typing_result: { select: TYPING_RESULT_SELECT } },
+      });
+      return mapEntriesToRows(entries, 1);
+    }
+    case "daily_15s": {
+      const entries = await prisma.leaderboardDaily15s.findMany({
+        where: { leaderboard_date: todayUtc },
+        take: n,
+        orderBy: LEADERBOARD_ORDER,
+        include: { typing_result: { select: TYPING_RESULT_SELECT } },
+      });
+      return mapEntriesToRows(entries, 1);
+    }
   }
 }
 
