@@ -66,7 +66,7 @@ export type UseTypingGameOptions = {
   coachMixProbability?: number;
 };
 
-const DEFAULT_COACH_MIX = 0.9;
+const DEFAULT_COACH_MIX = 0.7;
 
 export function useTypingGame(
   urlMode: GameMode | null = null,
