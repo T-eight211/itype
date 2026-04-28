@@ -13,7 +13,7 @@ export function useForgotPassword() {
 
   const sendResetCode = async (email: string) => {
     if (!isLoaded || !signIn) {
-      setError("Please wait while we initialize...")
+      setError("Please wait while we initialise...")
       return false
     }
 
