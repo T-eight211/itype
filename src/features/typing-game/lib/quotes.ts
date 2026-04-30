@@ -1,6 +1,10 @@
 export type QuoteLengthFilter = "all" | "short" | "medium" | "long" | "thicc";
 
-export type QuoteResult = { content: string };
+export type QuoteResult = {
+  content: string;
+  id?: string | null;
+  source?: "quotable" | "local" | null;
+};
 
 type LocalQuote = { text: string; source: string; length: number; id: number };
 type EnglishQuotesData = { language: string; groups: number[][]; quotes: LocalQuote[] };
@@ -24,7 +28,11 @@ export async function getRandomQuoteFromLocal(
     if (pool.length === 0) pool = data.quotes;
   }
   const quote = pool[Math.floor(Math.random() * pool.length)];
-  return { content: quote.text };
+  return {
+    content: quote.text,
+    id: String(quote.id),
+    source: "local",
+  };
 }
 
 export async function fetchQuote(length: QuoteLengthFilter): Promise<QuoteResult> {
@@ -32,8 +40,14 @@ export async function fetchQuote(length: QuoteLengthFilter): Promise<QuoteResult
     const url = buildQuotableRandomUrl(length);
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Failed to fetch quote: ${res.status}`);
-    const data: { content?: string } = await res.json();
-    if (data.content) return { content: data.content };
+    const data: { content?: string; _id?: string } = await res.json();
+    if (data.content) {
+      return {
+        content: data.content,
+        id: data._id ?? null,
+        source: "quotable",
+      };
+    }
   } catch {
   }
   return getRandomQuoteFromLocal(length);

@@ -108,6 +108,10 @@ export function useTypingGame(
   const keymapReactFlashTimeoutsRef = useRef<Map<number, number>>(new Map());
 
   const [regenKey, setRegenKey] = useState(0);
+  const [activeQuoteMeta, setActiveQuoteMeta] = useState<{
+    id: string | null;
+    source: "quotable" | "local" | null;
+  } | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const displayTextRef = useRef<string>("");
@@ -547,6 +551,8 @@ export function useTypingGame(
         punctuation,
         numbers,
         quoteLength: mode === "quote" ? quoteLength : null,
+        quoteId: mode === "quote" ? activeQuoteMeta?.id ?? null : null,
+        quoteSource: mode === "quote" ? activeQuoteMeta?.source ?? null : null,
         targetTimeSeconds: mode === "time" ? parseInt(timerDuration, 10) : null,
         targetWordCount: mode === "words" ? parseInt(wordCount, 10) : null,
         wpmHistory: wpmHistoryFinal,
@@ -596,6 +602,7 @@ export function useTypingGame(
     timerDuration,
     wordCount,
     quoteLength,
+    activeQuoteMeta,
     displayText,
     rawInput,
     punctuation,
@@ -607,6 +614,7 @@ export function useTypingGame(
 
   useEffect(() => {
     if (mode === "time" || mode === "words") {
+      setActiveQuoteMeta(null);
       const count = mode === "words" ? parseInt(wordCount) : 100;
       let text = buildPromptWordBlock(count);
       if (numbers) text = addNumbers(text);
@@ -617,9 +625,18 @@ export function useTypingGame(
       const loadQuote = async () => {
         try {
           const data = await fetchQuote(quoteLength);
-          if (!isCancelled) resetState(data.content || "Failed to load quote.");
+          if (!isCancelled) {
+            setActiveQuoteMeta({
+              id: data.id ?? null,
+              source: data.source ?? null,
+            });
+            resetState(data.content || "Failed to load quote.");
+          }
         } catch {
-          if (!isCancelled) resetState("Failed to load quote. Try again.");
+          if (!isCancelled) {
+            setActiveQuoteMeta(null);
+            resetState("Failed to load quote. Try again.");
+          }
         }
       };
       loadQuote();
