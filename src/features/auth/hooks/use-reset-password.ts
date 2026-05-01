@@ -24,7 +24,7 @@ export function useResetPassword() {
 
   const resetPassword = async (code: string, password: string, confirmPassword: string) => {
     if (!isLoaded || !signIn) {
-      setError("Please wait while we initialize...")
+      setError("Please wait while we initialise...")
       return false
     }
 
