@@ -337,7 +337,7 @@ function classifyWordErrors(
             }],
           },
         });
-        ti++; // skip the omitted target char, don't advance ui
+        ti++; 
         continue;
       }
     }

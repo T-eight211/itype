@@ -14,9 +14,7 @@ const KEY_HEIGHT = "48px";
 function rowPlClass(physicalRow: 1 | 2 | 3 | 4 | 5, layoutType: "ansi" | "iso") {
   if (physicalRow === 1) return "";
   if (physicalRow === 2) return "pl-[28px]";
-  // Row 3 (home): same stagger for ANSI and ISO.
   if (physicalRow === 3) return "pl-[48px]";
-  // Row 4: ISO bottom letter row lines up with row 2 (tab offset); ANSI keeps wider left shift.
   if (physicalRow === 4) return layoutType === "iso" ? "pl-[28px]" : "pl-[76px]";
   if (physicalRow === 5) return "pl-[192px]";
   return "";
@@ -63,12 +61,10 @@ function legendToChar(
       if (shiftedFromLayout == null) {
         return a;
       }
-      // A–Z: caps XOR shift picks base vs shift *legends from the layout JSON*, not toUpperCase().
       if (a.length === 1 && /[a-zA-Z]/.test(a)) {
         const useShiftedLayer = isCapsLockOn !== isShiftPressed;
         return useShiftedLayer ? shiftedFromLayout : a;
       }
-      // Keys with a dedicated shift legend (digits, symbols, non‑ASCII letters, etc.).
       return isShiftPressed ? shiftedFromLayout : a;
     }
     default:
@@ -108,7 +104,6 @@ function keycapHighlight(
   if (keymapDisplay === "react") {
     const matching = reactFlashes.filter((f) => keyTupleMatchesChar(key, f.ch));
     if (matching.length === 0) return null;
-    // Wrong keypress dominates over a concurrent correct one so errors stay visible.
     return matching.some((f) => f.kind === "incorrect") ? "incorrect" : "correct";
   }
   return null;
@@ -178,20 +173,15 @@ function LayoutKeyRow({
 
 type Props = {
   layout: KeyboardLayoutData;
-  /** User setting for top row visibility (combined with layout + “next” + numbers). */
   showTopRowSetting: ShowTopRow;
   keymapDisplay: KeymapDisplay;
-  /** True when the current test prompt text contains at least one digit. */
   testPromptContainsNumber: boolean;
-  /** Expected next character for `next` mode; ignored otherwise. */
   nextHighlightChar: string | null;
-  /** Active flashes for `react` mode (multiple can overlap); ignored otherwise. */
   reactFlashes: readonly KeymapReactFlash[];
   legendStyle: LegendStyle;
   keymapSize: number;
   isCapsLockOn: boolean;
   isShiftPressed: boolean;
-  /** Show the touch-typing hands overlay (only enabled by parent for QWERTY + `next`). */
   showHandsOverlay?: boolean;
   className?: string;
 };

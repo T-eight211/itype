@@ -27,7 +27,6 @@ export function buildTypingSegments(alignment: AlignmentResult, displayText: str
   return segments;
 }
 
-/** Segment index of the word being typed (including skipped tail of that word). */
 export function getActiveWordSegmentIndex(alignment: AlignmentResult, displayText: string): number | null {
   const segments = buildTypingSegments(alignment, displayText);
   const cc = alignment.cursorCellIndex;
@@ -66,7 +65,6 @@ export function TypingTextDisplay({
   displayText: string;
   isGameEnded: boolean;
   isInputFocused: boolean;
-  /** When true, the active word span gets `data-typing-active-word` for layout probes. */
   markActiveWord?: boolean;
 }) {
   const getClass = (cell: AlignmentCell) => {

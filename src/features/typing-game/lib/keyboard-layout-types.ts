@@ -1,6 +1,5 @@
 export type KeyboardLayoutKind = "ansi" | "iso";
 
-/** One key: 1–4 legend slots (unshifted, shift, level3, level4) */
 export type KeyTuple = string[];
 
 export type KeyboardLayoutData = {
