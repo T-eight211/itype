@@ -15,7 +15,6 @@ export type TypingGameKeymapBundle = {
   settings: UserKeymapSettings;
   isAuthenticated: boolean;
   layoutOptions: string[];
-  /** Parsed layout JSON, or `null` when keymap is off or file missing. */
   layout: KeyboardLayoutData | null;
   layoutFileName: string;
 };
@@ -40,10 +39,6 @@ export async function getKeyboardLayoutJsonAction(
   return isKeyboardLayoutData(data) ? data : null;
 }
 
-/**
- * Resolves the typing-game keymap: user settings (DB) + the layout JSON for the chosen file.
- * Client should merge in localStorage when the user is not authenticated.
- */
 export async function getTypingGameKeymapBundleAction(): Promise<TypingGameKeymapBundle> {
   const layoutOptions = await getKeyboardLayoutOptions();
   const { isAuthenticated, settings: rawSettings } =
