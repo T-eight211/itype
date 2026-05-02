@@ -4,8 +4,8 @@ import { prisma } from "@/lib/prisma";
 
 import { getTypingCoachAIEligibilityForUser } from "./get-ai-aggregate";
 
-const SESSIONS_BEFORE_RECOACH = 5;
-const ERRORS_BEFORE_RECOACH = 30;
+const SESSIONS_BEFORE_RECOACH = 10;
+const ERRORS_BEFORE_RECOACH = 20;
 
 export async function preflightCoachGeneration(
   userId: string
