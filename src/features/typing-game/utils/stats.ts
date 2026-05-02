@@ -14,7 +14,6 @@ export function roundTo2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** Format WPM/raw to 2 decimal places for display. Use this instead of inlining toFixed(2). */
 export function formatWpm(n: number): string {
   return roundTo2(n).toFixed(2);
 }
