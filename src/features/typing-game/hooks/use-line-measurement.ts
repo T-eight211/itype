@@ -37,7 +37,6 @@ export function useLineMeasurement({
     return indices;
   }, [measureStr]);
 
-  // Line break detection + resize observer
   useLayoutEffect(() => {
     const containerEl = wrapContainerRef.current;
     if (!containerEl || !measureStr) return;
@@ -49,16 +48,13 @@ export function useLineMeasurement({
     return () => ro.disconnect();
   }, [measureStr, runMeasure]);
 
-  // Reset scroll position on settings change
   useLayoutEffect(() => {
     const el = scrollContainerRef.current;
     if (el) el.scrollTop = 0;
     previousCursorTopRef.current = null;
     previousCursorIndexRef.current = -1;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settingsKey]);
 
-  // Auto-scroll to keep cursor visible
   useLayoutEffect(() => {
     const measureEl = measureRef.current;
     const scrollEl = scrollContainerRef.current;
