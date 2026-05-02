@@ -9,10 +9,6 @@ const focusTrigramSet = new Set(
   focusTrigramsData.trigrams.map((t: string) => t.toUpperCase())
 );
 
-/**
- * True if the word contains double consecutive letters (e.g. "ll" in "hello")
- * or a repeated sub-pattern of length >= 2 (e.g. "ana" repeating in "banana").
- */
 export function hasRepeatPattern(word: string): boolean {
   const w = word.toLowerCase();
   for (let i = 0; i < w.length - 1; i++) {
@@ -27,10 +23,6 @@ export function hasRepeatPattern(word: string): boolean {
   return false;
 }
 
-/**
- * True if the word (length > 2) contains at least one bigram from the focus set.
- * Words that are themselves just a bigram (length === 2) are excluded.
- */
 export function hasFocusBigram(word: string): boolean {
   if (word.length <= 2) return false;
   const upper = word.toUpperCase();
@@ -40,10 +32,6 @@ export function hasFocusBigram(word: string): boolean {
   return false;
 }
 
-/**
- * True if the word (length > 3) contains at least one trigram from the focus set.
- * Words that are themselves just a trigram (length === 3) are excluded.
- */
 export function hasFocusTrigram(word: string): boolean {
   if (word.length <= 3) return false;
   const upper = word.toUpperCase();
