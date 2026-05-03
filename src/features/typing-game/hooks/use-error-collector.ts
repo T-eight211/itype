@@ -64,6 +64,27 @@ function dedupeMergeWordErrorEvents(existing: WordErrorEvent[], incoming: WordEr
   return out;
 }
 
+function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
+  return aStart <= bEnd && bStart <= aEnd;
+}
+
+function removeSubstitutionOmissionOverlaps(events: WordErrorEvent[]): WordErrorEvent[] {
+  const omissions = events.filter((e) => e.error_type === "omission");
+  if (omissions.length === 0) return events;
+
+  return events.filter((event) => {
+    if (event.error_type !== "substitution") return true;
+    return !omissions.some((omission) =>
+      rangesOverlap(
+        event.char_index_start,
+        event.char_index_end,
+        omission.char_index_start,
+        omission.char_index_end,
+      ),
+    );
+  });
+}
+
 function positionInWord(
   charStart: number,
   charEnd: number,
@@ -196,8 +217,8 @@ function classifyWordErrors(
   tailOmissionForEarlySpace = false
 ): WordErrorEvent[] {
   const events: WordErrorEvent[] = [];
-  let ti = 0; // target index
-  let ui = 0; // typed (user) index
+  let ti = 0; 
+  let ui = 0; 
   let eventOrder = 0;
 
   while (ti < target.length && ui < typed.length) {
@@ -541,7 +562,7 @@ export function useErrorCollector(): ErrorCollectorAPI {
 
         ws.pauseEvents.push({
           error_type: "pause",
-          event_order: 0, // re-numbered at finalize
+          event_order: 0, 
           corrected: null,
           char_index_start: beforeExpectedIdx < pw.word.length ? beforeExpectedIdx : pauseCharIdx,
           char_index_end: beforeExpectedIdx < pw.word.length ? beforeExpectedIdx : pauseCharIdx,
@@ -743,9 +764,10 @@ export function useErrorCollector(): ErrorCollectorAPI {
           errors.push(ev);
         }
       }
+      const normalizedErrors = removeSubstitutionOmissionOverlaps(errors);
 
       for (const p of pauses) allEvents.push(p);
-      for (const e of errors) allEvents.push(e);
+      for (const e of normalizedErrors) allEvents.push(e);
       for (let ei = 0; ei < allEvents.length; ei++) {
         (allEvents[ei] as { event_order: number }).event_order = ei;
       }
@@ -775,7 +797,7 @@ export function useErrorCollector(): ErrorCollectorAPI {
         duration_ms: durationMs,
         pause_count: ws?.pauseCount ?? 0,
         max_pause_ms: ws?.maxPauseMs ?? 0,
-        error_count: errors.length,
+        error_count: normalizedErrors.length,
         word_error_events: allEvents,
       };
 
