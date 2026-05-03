@@ -64,24 +64,19 @@ function dedupeMergeWordErrorEvents(existing: WordErrorEvent[], incoming: WordEr
   return out;
 }
 
-function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
-  return aStart <= bEnd && bStart <= aEnd;
+function rangesOverlap(a: WordErrorEvent, b: WordErrorEvent): boolean {
+  return a.char_index_start <= b.char_index_end && b.char_index_start <= a.char_index_end;
 }
 
-function removeSubstitutionOmissionOverlaps(events: WordErrorEvent[]): WordErrorEvent[] {
-  const omissions = events.filter((e) => e.error_type === "omission");
-  if (omissions.length === 0) return events;
+function normalizeFinalWordErrors(events: WordErrorEvent[]): WordErrorEvent[] {
+  const activeOmissions = events.filter(
+    (e) => e.error_type === "omission" && e.corrected !== true
+  );
+  if (activeOmissions.length === 0) return events;
 
   return events.filter((event) => {
-    if (event.error_type !== "substitution") return true;
-    return !omissions.some((omission) =>
-      rangesOverlap(
-        event.char_index_start,
-        event.char_index_end,
-        omission.char_index_start,
-        omission.char_index_end,
-      ),
-    );
+    if (event.error_type !== "substitution" || event.corrected === true) return true;
+    return !activeOmissions.some((omission) => rangesOverlap(event, omission));
   });
 }
 
@@ -598,17 +593,8 @@ export function useErrorCollector(): ErrorCollectorAPI {
 
       const lastPauseWas = ws.pauseEvents.length > 0;
       const nextErrors = classifyWordErrors(pw.word, wordInfo.typed, lastPauseWas, true);
-      if (wordInfo.typed === pw.word && nextErrors.length === 0 && ws.errorEvents.length > 0) {
-        ws.errorEvents = ws.errorEvents;
-      } else if (ws.suppressForwardErrorMerges && ws.errorEvents.length > 0) {
-        ws.errorEvents = ws.errorEvents;
-      } else if (wordInfo.typed.length === pw.word.length && wordInfo.typed !== pw.word) {
-        ws.errorEvents = nextErrors;
-      } else if (ws.errorEvents.length > 0) {
-        ws.errorEvents = dedupeMergeWordErrorEvents(ws.errorEvents, nextErrors);
-      } else {
-        ws.errorEvents = nextErrors;
-      }
+      ws.errorEvents = nextErrors;
+      ws.suppressForwardErrorMerges = false;
       return;
     }
 
@@ -623,7 +609,11 @@ export function useErrorCollector(): ErrorCollectorAPI {
       if (isCorrectNow) {
         ws.suppressForwardErrorMerges = false;
         if (ws.errorEvents.length > 0) {
-          ws.archivedErrorEvents.push(...ws.errorEvents);
+          ws.archivedErrorEvents.push(
+            ...ws.errorEvents.map((event) =>
+              event.error_type === "pause" ? event : { ...event, corrected: true }
+            )
+          );
           ws.errorEvents = [];
         }
         if (!ws.wasCorrect) {
@@ -756,18 +746,18 @@ export function useErrorCollector(): ErrorCollectorAPI {
       const pauses = ws?.pauseEvents ?? [];
       const combinedErrors = [...(ws?.archivedErrorEvents ?? []), ...(ws?.errorEvents ?? [])];
       const seenExactErrors = new Set<string>();
-      const errors: WordErrorEvent[] = [];
+      const dedupedErrors: WordErrorEvent[] = [];
       for (const ev of combinedErrors) {
         const k = wordErrorEventExactKey(ev);
         if (!seenExactErrors.has(k)) {
           seenExactErrors.add(k);
-          errors.push(ev);
+          dedupedErrors.push(ev);
         }
       }
-      const normalizedErrors = removeSubstitutionOmissionOverlaps(errors);
+      const errors = normalizeFinalWordErrors(dedupedErrors);
 
       for (const p of pauses) allEvents.push(p);
-      for (const e of normalizedErrors) allEvents.push(e);
+      for (const e of errors) allEvents.push(e);
       for (let ei = 0; ei < allEvents.length; ei++) {
         (allEvents[ei] as { event_order: number }).event_order = ei;
       }
@@ -797,7 +787,7 @@ export function useErrorCollector(): ErrorCollectorAPI {
         duration_ms: durationMs,
         pause_count: ws?.pauseCount ?? 0,
         max_pause_ms: ws?.maxPauseMs ?? 0,
-        error_count: normalizedErrors.length,
+        error_count: errors.length,
         word_error_events: allEvents,
       };
 
