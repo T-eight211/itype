@@ -19,14 +19,13 @@ export function smoothWithValueWindow(
     for (let j = from; j < to && j < arr.length; j += 1) {
       const neighborValue = get(arr[j] as number);
 
-      // Only include values that are within the value window
+      
       if (Math.abs(neighborValue - currentValue) <= valueWindowSize) {
         sum += neighborValue;
         count += 1;
       }
     }
 
-    // If no values were within the window, use the original value
     result[i] = count > 0 ? sum / count : currentValue;
   }
 
