@@ -11,6 +11,7 @@ import {
 } from "../schemas/ai-aggregate";
 import {
   getTypingCoachAIAggregate,
+  ROLLING_WINDOW_DAYS,
   type TypingCoachAIEligibility,
 } from "./get-ai-aggregate";
 import { generateTypingCoachOutput } from "./generate-output";
@@ -21,8 +22,6 @@ import {
   TypingCoachModelError,
   TypingCoachOutputParseError,
 } from "../lib/errors";
-
-type WindowArg = "last_30d" | "lifetime";
 
 export type RunTypingCoachResult =
   | {
@@ -67,9 +66,9 @@ function isEligibility(
 
 export async function runTypingCoachForUser(
   userId: string,
-  window: WindowArg = "last_30d"
+  windowDays: number = ROLLING_WINDOW_DAYS
 ): Promise<Exclude<RunTypingCoachResult, { kind: "not_authenticated" }>> {
-  const aggregateResult = await getTypingCoachAIAggregate(window, { userId });
+  const aggregateResult = await getTypingCoachAIAggregate(windowDays, { userId });
 
   if (isEligibility(aggregateResult) && aggregateResult.ready === false) {
     return { kind: "not_ready", ...aggregateResult };
@@ -162,12 +161,12 @@ export async function runTypingCoachForUser(
 }
 
 export async function runTypingCoach(
-  window: WindowArg = "last_30d"
+  windowDays: number = ROLLING_WINDOW_DAYS
 ): Promise<RunTypingCoachResult> {
   const { userId } = await auth();
   if (!userId) {
     return { kind: "not_authenticated", error: "Not signed in" };
   }
 
-  return runTypingCoachForUser(userId, window);
+  return runTypingCoachForUser(userId, windowDays);
 }

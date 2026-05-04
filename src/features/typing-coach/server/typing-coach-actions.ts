@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 
 import type { TypingCoachAIOutput } from "../schemas/ai-output";
 
-import { getTypingCoachAIEligibility } from "./get-ai-aggregate";
+import { getTypingCoachAIEligibility, ROLLING_WINDOW_DAYS } from "./get-ai-aggregate";
 import { runTypingCoach } from "./run-typing-coach";
 
 function parsePracticeWordsJson(json: unknown): string[] {
@@ -16,9 +16,9 @@ function parsePracticeWordsJson(json: unknown): string[] {
 }
 
 export async function getTypingCoachEligibilityAction(
-  window: "last_30d" | "lifetime" = "last_30d"
+  windowDays: number = ROLLING_WINDOW_DAYS
 ) {
-  return getTypingCoachAIEligibility(window);
+  return getTypingCoachAIEligibility(windowDays);
 }
 
 export type TypingCoachFeedbackActionResult =
@@ -95,9 +95,9 @@ export type RunTypingCoachGenerateActionResult =
     };
 
 export async function runTypingCoachGenerateAction(
-  window: "last_30d" | "lifetime" = "last_30d"
+  windowDays: number = ROLLING_WINDOW_DAYS
 ): Promise<RunTypingCoachGenerateActionResult> {
-  const result = await runTypingCoach(window);
+  const result = await runTypingCoach(windowDays);
 
   switch (result.kind) {
     case "ok":

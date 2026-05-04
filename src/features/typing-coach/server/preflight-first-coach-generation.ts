@@ -16,7 +16,7 @@ export async function preflightCoachGeneration(
   });
   if (pendingRun) return { shouldRun: false };
 
-  const eligibility = await getTypingCoachAIEligibilityForUser(userId, "last_30d");
+  const eligibility = await getTypingCoachAIEligibilityForUser(userId);
   if (!eligibility.ready) return { shouldRun: false };
 
   const lastCompleted = await prisma.typingCoachAiRun.findFirst({

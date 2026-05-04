@@ -122,7 +122,7 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     const run = async () => {
       try {
         const [el, fb] = await Promise.all([
-          getTypingCoachEligibilityAction("last_30d"),
+          getTypingCoachEligibilityAction(),
           getTypingCoachFeedbackAction(),
         ]);
         if (isCancelled) return;

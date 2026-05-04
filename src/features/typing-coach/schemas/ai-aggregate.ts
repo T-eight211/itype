@@ -5,14 +5,6 @@ import {
   PositionInWordSchema,
 } from "@/features/typing-game/schemas/word-error-event";
 
-export const AggregateWindowSchema = z
-  .enum(["last_30d", "lifetime"])
-  .describe("Time window used to aggregate historical typing telemetry for AI coaching.")
-  .meta({
-    dev: "Window label for the aggregate batch.",
-    values: ["last_30d", "lifetime"],
-  });
-
 export const PositionBucketCountsSchema = z
   .object({
     start_count: z
@@ -341,9 +333,13 @@ export const TypingCoachAIAggregateSchema = z
       .meta({
         dev: "Typically Clerk user_id / subject used in typing_results.",
       }),
-    window: AggregateWindowSchema.optional().describe("Optional aggregation window label."),
-    history: TypingCoachAIHistorySchema.optional().describe(
-      "Present when the time+session cap applies (not lifetime)."
+    window_days: z
+      .number()
+      .int()
+      .positive()
+      .describe("Rolling lookback in days: include games from the last N days (minimum 1)."),
+    history: TypingCoachAIHistorySchema.describe(
+      "Which recent sessions fed this aggregate (session cap intersected with window_days)."
     ),
     session_count: z
       .number()

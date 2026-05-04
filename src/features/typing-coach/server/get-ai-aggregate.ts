@@ -1,5 +1,3 @@
-"use server";
-
 import { auth } from "@clerk/nextjs/server";
 import { Prisma } from "@/generated/prisma/client";
 import type { Prisma as PrismaNamespace } from "@/generated/prisma/client";
@@ -10,13 +8,12 @@ import {
   TypingCoachAIAggregateSchema,
 } from "../schemas/ai-aggregate";
 
-type WindowArg = "last_30d" | "lifetime";
+export const ROLLING_WINDOW_DAYS = 30;
 
 const SESSION_CAP = 30;
 const TOP_WORDS_BY_DIFFICULTY = 30;
 const INCLUDE_PATTERN_EXTRAS = true;
 const TOP_ERROR_PATTERNS = 50;
-const ROLLING_WINDOW_DAYS = 30;
 const MIN_SESSIONS_FOR_AI = 15;
 const MIN_NON_PAUSE_ERROR_EVENTS_FOR_AI = 25;
 
@@ -53,22 +50,22 @@ function buildInsufficientDataMessage(missing: {
   return "Not enough data for AI coaching yet.";
 }
 
+function normalizeWindowDays(windowDays: number): number {
+  const n = Math.floor(Number(windowDays));
+  if (!Number.isFinite(n)) return ROLLING_WINDOW_DAYS;
+  return Math.max(1, n);
+}
+
 async function computeEligibilityForScope(
   userId: string,
-  window: WindowArg,
-  allowedIds: number[] | null
+  allowedIds: number[]
 ): Promise<TypingCoachAIEligibility> {
   const idFilterSql =
-    allowedIds && allowedIds.length > 0
+    allowedIds.length > 0
       ? Prisma.sql`AND wm.typing_result_id IN (${Prisma.join(allowedIds)})`
-      : Prisma.empty;
+      : Prisma.sql`AND 1 = 0`;
 
-  const scopedSessionCount =
-    window === "lifetime"
-      ? await prisma.typingResults.count({
-          where: { user_id: userId },
-        })
-      : allowedIds?.length ?? 0;
+  const scopedSessionCount = allowedIds.length;
 
   const nonPauseErrorEventRows = await prisma.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
     SELECT COUNT(*)::bigint AS count
@@ -114,18 +111,19 @@ async function computeEligibilityForScope(
 
 export async function getTypingCoachAIEligibilityForUser(
   userId: string,
-  window: WindowArg = "last_30d"
+  windowDays: number = ROLLING_WINDOW_DAYS
 ): Promise<TypingCoachAIEligibility> {
-  const allowedIds = await getAllowedTypingResultIds(userId, window);
-  return computeEligibilityForScope(userId, window, allowedIds);
+  const days = normalizeWindowDays(windowDays);
+  const allowedIds = await getAllowedTypingResultIds(userId, days);
+  return computeEligibilityForScope(userId, allowedIds);
 }
 
 export async function getTypingCoachAIEligibility(
-  window: WindowArg = "last_30d"
+  windowDays: number = ROLLING_WINDOW_DAYS
 ): Promise<TypingCoachAIEligibility | { error: string }> {
   const { userId } = await auth();
   if (!userId) return { error: "Not signed in" };
-  return getTypingCoachAIEligibilityForUser(userId, window);
+  return getTypingCoachAIEligibilityForUser(userId, windowDays);
 }
 
 function aggregatedEventPatternKey(row: {
@@ -162,11 +160,9 @@ function toNumberOrNull(value: unknown): number | null {
 
 async function getAllowedTypingResultIds(
   userId: string,
-  window: WindowArg
-): Promise<number[] | null> {
-  if (window === "lifetime") return null;
-
-  const since = new Date(Date.now() - ROLLING_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  windowDays: number
+): Promise<number[]> {
+  const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
 
   const topSessions = await prisma.typingResults.findMany({
     where: { user_id: userId },
@@ -237,7 +233,7 @@ function mapRowToAggregatedEvent(row: {
 }
 
 export async function getTypingCoachAIAggregate(
-  window: WindowArg = "last_30d",
+  windowDays: number = ROLLING_WINDOW_DAYS,
   options?: { userId: string }
 ): Promise<TypingCoachAIAggregate | { error: string } | TypingCoachAIEligibility> {
   let userId: string | undefined = options?.userId;
@@ -247,10 +243,12 @@ export async function getTypingCoachAIAggregate(
   }
   if (!userId) return { error: "Not signed in" };
 
-  const allowedIds = await getAllowedTypingResultIds(userId, window);
+  const effectiveWindowDays = normalizeWindowDays(windowDays);
+  const allowedIds = await getAllowedTypingResultIds(userId, effectiveWindowDays);
 
-  const typingResultFilter: PrismaNamespace.TypingResultsWhereInput | undefined =
-    allowedIds && allowedIds.length > 0 ? { id: { in: allowedIds } } : undefined;
+  const typingResultFilter: PrismaNamespace.TypingResultsWhereInput = {
+    id: { in: allowedIds },
+  };
 
   const wordWhere: PrismaNamespace.WordMistakeWhereInput = {
     typing_result: {
@@ -261,13 +259,13 @@ export async function getTypingCoachAIAggregate(
   };
 
   try {
-    const eligibility = await computeEligibilityForScope(userId, window, allowedIds);
+    const eligibility = await computeEligibilityForScope(userId, allowedIds);
     if (!eligibility.ready) return eligibility;
 
     const idFilterSql =
-      allowedIds && allowedIds.length > 0
+      allowedIds.length > 0
         ? Prisma.sql`AND wm.typing_result_id IN (${Prisma.join(allowedIds)})`
-        : Prisma.empty;
+        : Prisma.sql`AND 1 = 0`;
 
     const [
       wordRows,
@@ -656,15 +654,12 @@ export async function getTypingCoachAIAggregate(
 
     const payload: TypingCoachAIAggregate = {
       user_id: userId,
-      window,
-      history:
-        window === "lifetime"
-          ? undefined
-          : {
-              session_cap: SESSION_CAP,
-              window_days: ROLLING_WINDOW_DAYS,
-              effective_session_count: uniqueSessionIds.size,
-            },
+      window_days: effectiveWindowDays,
+      history: {
+        session_cap: SESSION_CAP,
+        window_days: effectiveWindowDays,
+        effective_session_count: uniqueSessionIds.size,
+      },
       session_count: uniqueSessionIds.size,
       word_count: summaryWordRowCount,
       distinct_word_count: top_words.length,
