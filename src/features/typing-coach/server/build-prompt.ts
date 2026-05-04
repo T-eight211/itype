@@ -1,6 +1,13 @@
 import "server-only";
 
-import type { TypingCoachAIInput } from "../schemas/ai-aggregate";
+import type { TypingCoachAIAggregate, TypingCoachAIInput } from "../schemas/ai-aggregate";
+
+function aggregateJsonForPrompt(
+  aggregate: TypingCoachAIAggregate
+): Omit<TypingCoachAIAggregate, "top_words" | "top_error_patterns"> {
+  const { top_words: _tw, top_error_patterns: _tep, ...rest } = aggregate;
+  return rest;
+}
 
 const SYSTEM_PROMPT = `You are an expert typing coach for ANSI QWERTY touch typing (home row, standard finger assignments).
 
@@ -40,8 +47,7 @@ export function buildTypingCoachPrompt(input: TypingCoachAIInput): TypingCoachPr
   const user = `${goalsBlock}AGGREGATE_JSON summarizes recent typing performance for this user (see field descriptions in the codebase: WordMistake / WordErrorEvent telemetry).
 
 How to interpret it:
-- "top_error_patterns" (and similar ranked signals): PRIMARY source for what to coach — prefer weaknesses visible here.
-- "top_words" / per-word aggregates: supporting evidence — use target_word, final variants, difficulty, and word-level stats to ground examples.
+- "words": PRIMARY source — each entry is one target_word with final_variants, stats, and "word_error_events" (aggregated error signatures and counts for that word). Prefer weaknesses backed by high counts and clear expected vs actual pairs.
 - Pause-related signals: only surface a pause weakness if you can tie it to a specific transition, character index, or before/after pair from the data — never generic hesitation advice.
 - Where error events include keyboard_row / finger / key_distance / adjacent_key_slip / same_hand: you may mention likely QWERTY finger or row issues; omit finger claims if geometry is missing for that event.
 - "contains_focus_bigram" / "contains_focus_trigram" on words: rare n-grams — useful context when explaining sequence difficulty.
@@ -50,7 +56,7 @@ How to interpret it:
 Return JSON with "items": [ ... ]. Each item must have "feedback" (2–3 sentences as above) and "practice_words" (dedicated list for that item only).
 
 AGGREGATE_JSON:
-${JSON.stringify(input.aggregate)}`;
+${JSON.stringify(aggregateJsonForPrompt(input.aggregate))}`;
 
   return { system: SYSTEM_PROMPT, user };
 }
