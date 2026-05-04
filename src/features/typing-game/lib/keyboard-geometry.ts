@@ -19,7 +19,7 @@ export type KeyInfo = {
   hand: string;
   finger: Finger;
 };
-
+4
 const keyMap = new Map<string, KeyInfo>();
 
 function toFinger(hand: string, finger: string): Finger {

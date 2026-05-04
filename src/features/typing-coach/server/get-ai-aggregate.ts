@@ -183,13 +183,13 @@ async function getAllowedTypingResultIds(
 function difficultyScoreFromBuckets(entry: {
   error_count: { total: number };
   final_status_counts: { incorrect_count: number };
-  pause: { total_count: number };
+  error_type_counts?: { pause_count: number };
   correction: { total: number };
 }): number {
   return roundTo2(
     entry.error_count.total +
       entry.final_status_counts.incorrect_count * 2 +
-      entry.pause.total_count * 0.5 +
+      (entry.error_type_counts?.pause_count ?? 0) * 0.5 +
       entry.correction.total * 0.5
   );
 }
@@ -446,7 +446,6 @@ export async function getTypingCoachAIAggregate(
         contains_focus_bigram: boolean;
         contains_focus_trigram: boolean;
         duration_ms: { mean: number };
-        pause: { total_count: number; mean_count: number };
         max_pause_ms: { mean_max_pause_ms: number; global_max_pause_ms: number };
         error_count: { total: number };
         final_variants: Array<{ final_word: string; count: number }>;
@@ -475,7 +474,6 @@ export async function getTypingCoachAIAggregate(
           total_count: number;
         };
         _durationNonNullCount: number;
-        _pauseRowCount: number;
         _maxPauseNonNullCount: number;
       }
     >();
@@ -498,7 +496,6 @@ export async function getTypingCoachAIAggregate(
         contains_focus_bigram: row.contains_focus_bigram,
         contains_focus_trigram: row.contains_focus_trigram,
         duration_ms: { mean: 0 },
-        pause: { total_count: 0, mean_count: 0 },
         max_pause_ms: { mean_max_pause_ms: 0, global_max_pause_ms: 0 },
         error_count: { total: 0 },
         final_variants: [],
@@ -512,7 +509,6 @@ export async function getTypingCoachAIAggregate(
           total_count: 0,
         },
         _durationNonNullCount: 0,
-        _pauseRowCount: 0,
         _maxPauseNonNullCount: 0,
       };
 
@@ -535,13 +531,11 @@ export async function getTypingCoachAIAggregate(
       bucketed.correction.total += row.correction_count;
       bucketed.backspace.total += row.backspace_count;
       bucketed.error_count.total += row.error_count;
-      bucketed.pause.total_count += row.pause_count;
 
       if (row.duration_ms != null) {
         bucketed.duration_ms.mean += row.duration_ms;
         bucketed._durationNonNullCount++;
       }
-      bucketed._pauseRowCount++;
 
       if (row.max_pause_ms > bucketed.max_pause_ms.global_max_pause_ms) {
         bucketed.max_pause_ms.global_max_pause_ms = row.max_pause_ms;
@@ -603,11 +597,6 @@ export async function getTypingCoachAIAggregate(
             ? roundTo2(entry.duration_ms.mean / entry._durationNonNullCount)
             : 0,
       },
-      pause: {
-        total_count: entry.pause.total_count,
-        mean_count:
-          entry._pauseRowCount > 0 ? roundTo2(entry.pause.total_count / entry._pauseRowCount) : 0,
-      },
       max_pause_ms: {
         mean_max_pause_ms:
           entry._maxPauseNonNullCount > 0
@@ -627,7 +616,7 @@ export async function getTypingCoachAIAggregate(
       difficulty_score: difficultyScoreFromBuckets({
         error_count: w.error_count,
         final_status_counts: w.final_status_counts,
-        pause: w.pause,
+        error_type_counts: w.error_type_counts,
         correction: w.correction,
       }),
     }));

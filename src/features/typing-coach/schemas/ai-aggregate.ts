@@ -312,10 +312,6 @@ export const TypingCoachAIWordAggregateSchema = z
     duration_ms: z.object({
       mean: z.number().nonnegative(),
     }),
-    pause: z.object({
-      total_count: z.number().int().nonnegative(),
-      mean_count: z.number().nonnegative(),
-    }),
     max_pause_ms: MaxPauseSummarySchema,
     error_count: z.object({
       total: z.number().int().nonnegative(),
@@ -332,7 +328,7 @@ export const TypingCoachAITopWordSchema = TypingCoachAIWordAggregateSchema.exten
   difficulty_score: z
     .number()
     .describe(
-      "Heuristic rank: error_count.total + incorrect_count*2 + pause.total_count*0.5 + correction.total*0.5"
+      "Heuristic rank: error_count.total + incorrect_count*2 + error_type_counts.pause_count*0.5 + correction.total*0.5"
     ),
 });
 
