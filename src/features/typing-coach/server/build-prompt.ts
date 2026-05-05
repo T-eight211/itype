@@ -5,10 +5,10 @@ import type { TypingCoachAIAggregate, TypingCoachAIInput } from "../schemas/ai-a
 export function aggregateJsonForPrompt(
   aggregate: TypingCoachAIAggregate
 ): Omit<TypingCoachAIAggregate, "top_words" | "top_error_patterns"> {
-  const rest = { ...aggregate };
+  const rest: Partial<TypingCoachAIAggregate> = { ...aggregate };
   delete rest.top_words;
   delete rest.top_error_patterns;
-  return rest;
+  return rest as Omit<TypingCoachAIAggregate, "top_words" | "top_error_patterns">;
 }
 
 const SYSTEM_PROMPT = `You are an expert typing coach for ANSI QWERTY touch typing (home row, standard finger assignments).
