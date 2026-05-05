@@ -135,7 +135,7 @@ export function generatedToStoredOutput(gen: TypingCoachAIGenerate): TypingCoach
   }
 
   if (items.length === 0) {
-    throw new Error("No valid coaching items after normalization");
+    throw new Error("No valid coaching items after normalisation");
   }
 
   return TypingCoachAIOutputSchema.parse({ items });
