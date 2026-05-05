@@ -2,7 +2,7 @@ import "server-only";
 
 import type { TypingCoachAIAggregate, TypingCoachAIInput } from "../schemas/ai-aggregate";
 
-function aggregateJsonForPrompt(
+export function aggregateJsonForPrompt(
   aggregate: TypingCoachAIAggregate
 ): Omit<TypingCoachAIAggregate, "top_words" | "top_error_patterns"> {
   const rest = { ...aggregate };

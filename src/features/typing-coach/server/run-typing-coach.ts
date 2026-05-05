@@ -15,6 +15,7 @@ import {
   type TypingCoachAIEligibility,
 } from "./get-ai-aggregate";
 import { generateTypingCoachOutput } from "./generate-output";
+import { aggregateJsonForPrompt } from "./build-prompt";
 import type { TypingCoachAIOutput } from "../schemas/ai-output";
 import { TYPING_COACH_MODEL_ID } from "../lib/model-config";
 import {
@@ -99,7 +100,7 @@ export async function runTypingCoachForUser(
       user_id: userId,
       status: "pending",
       model: TYPING_COACH_MODEL_ID,
-      input_snapshot: parsedInput.data.aggregate as unknown as object,
+      input_snapshot: aggregateJsonForPrompt(parsedInput.data.aggregate) as unknown as object,
     },
     select: { id: true },
   });
