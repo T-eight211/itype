@@ -39,7 +39,7 @@ export type TypingCoachPromptMessages = {
 };
 
 export function buildTypingCoachPrompt(input: TypingCoachAIInput): TypingCoachPromptMessages {
-  const user = `AGGREGATE_JSON summarises recent typing performance for this user (see field descriptions in the codebase: WordMistake / WordErrorEvent telemetry).
+  const user = `AGGREGATE_JSON summarises recent typing performance for this user.
 
 How to interpret it:
 - "words": PRIMARY source — each entry is one target_word with final_variants, stats, and "word_error_events" (aggregated error signatures and counts for that word). Prefer weaknesses backed by high counts and clear expected vs actual pairs.

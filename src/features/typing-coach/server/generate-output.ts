@@ -71,7 +71,7 @@ export async function generateTypingCoachOutput(
     output = generatedToStoredOutput(genParse.data);
   } catch (err) {
     throw new TypingCoachOutputParseError(
-      `Typing coach output normalization failed: ${err instanceof Error ? err.message : String(err)}`,
+      `Typing coach output normalisation failed: ${err instanceof Error ? err.message : String(err)}`,
       {
         cause: err,
         rawSnippet: JSON.stringify(modelResult.object),
