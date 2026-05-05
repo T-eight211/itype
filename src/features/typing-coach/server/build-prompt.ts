@@ -5,7 +5,9 @@ import type { TypingCoachAIAggregate, TypingCoachAIInput } from "../schemas/ai-a
 function aggregateJsonForPrompt(
   aggregate: TypingCoachAIAggregate
 ): Omit<TypingCoachAIAggregate, "top_words" | "top_error_patterns"> {
-  const { top_words: _tw, top_error_patterns: _tep, ...rest } = aggregate;
+  const rest = { ...aggregate };
+  delete rest.top_words;
+  delete rest.top_error_patterns;
   return rest;
 }
 
@@ -37,14 +39,7 @@ export type TypingCoachPromptMessages = {
 };
 
 export function buildTypingCoachPrompt(input: TypingCoachAIInput): TypingCoachPromptMessages {
-  const goalsBlock =
-    input.goals.length > 0
-      ? `EXPLICIT_USER_GOALS (soft hints; do not override clear weakness signals in telemetry):\n${input.goals
-          .map((g, i) => `${i + 1}. ${g}`)
-          .join("\n")}\n\n`
-      : "";
-
-  const user = `${goalsBlock}AGGREGATE_JSON summarizes recent typing performance for this user (see field descriptions in the codebase: WordMistake / WordErrorEvent telemetry).
+  const user = `AGGREGATE_JSON summarises recent typing performance for this user (see field descriptions in the codebase: WordMistake / WordErrorEvent telemetry).
 
 How to interpret it:
 - "words": PRIMARY source — each entry is one target_word with final_variants, stats, and "word_error_events" (aggregated error signatures and counts for that word). Prefer weaknesses backed by high counts and clear expected vs actual pairs.

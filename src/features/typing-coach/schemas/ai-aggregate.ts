@@ -393,13 +393,6 @@ export const TypingCoachAIAggregateSchema = z
 export const TypingCoachAIInputSchema = z
   .object({
     aggregate: TypingCoachAIAggregateSchema.describe("Structured aggregated telemetry input."),
-    goals: z
-      .array(z.string())
-      .default([])
-      .describe("Optional explicit coaching goals or constraints supplied by caller.")
-      .meta({
-        dev: "Examples: improve transpositions, focus on left-hand top-row.",
-      }),
   })
   .describe("Top-level payload sent to the typing coach AI prompt builder.")
   .meta({

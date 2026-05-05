@@ -85,7 +85,6 @@ export async function runTypingCoachForUser(
 
   const inputCandidate: TypingCoachAIInput = {
     aggregate: aggregateResult,
-    goals: [],
   };
   const parsedInput = TypingCoachAIInputSchema.safeParse(inputCandidate);
   if (!parsedInput.success) {
