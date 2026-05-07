@@ -87,8 +87,8 @@ export function StatsProfileCard({ profile }: StatsProfileCardProps) {
           <div className="mt-6 w-full max-w-md rounded-2xl border border-border/50 bg-muted/20 px-4 py-4 text-left">
             <div className="mb-2 flex items-center justify-between">
               <HoverCard openDelay={50} closeDelay={100}>
-                <HoverCardTrigger asChild>
-                  <span className="cursor-default text-sm text-muted-foreground">Level {profile.level}</span>
+                <HoverCardTrigger className="cursor-default text-sm text-muted-foreground">
+                  Level {profile.level}
                 </HoverCardTrigger>
                 <HoverCardContent className="w-fit px-3 py-2">
                   <span className="text-sm font-mono">
@@ -97,10 +97,8 @@ export function StatsProfileCard({ profile }: StatsProfileCardProps) {
                 </HoverCardContent>
               </HoverCard>
               <HoverCard openDelay={50} closeDelay={100}>
-                <HoverCardTrigger asChild>
-                  <span className="cursor-default text-sm font-mono text-muted-foreground">
-                    {formatCompactXp(profile.xpIntoLevel)} / {formatCompactXp(profile.xpNeededForNextLevel)}
-                  </span>
+                <HoverCardTrigger className="cursor-default text-sm font-mono text-muted-foreground">
+                  {formatCompactXp(profile.xpIntoLevel)} / {formatCompactXp(profile.xpNeededForNextLevel)}
                 </HoverCardTrigger>
                 <HoverCardContent className="w-fit px-3 py-2">
                   <span className="text-sm font-mono">
@@ -110,10 +108,8 @@ export function StatsProfileCard({ profile }: StatsProfileCardProps) {
               </HoverCard>
             </div>
             <HoverCard openDelay={50} closeDelay={100}>
-              <HoverCardTrigger asChild>
-                <div>
-                  <Progress value={profile.xpProgressPercent} className="h-2.5" />
-                </div>
+              <HoverCardTrigger className="block w-full">
+                <Progress value={profile.xpProgressPercent} className="h-2.5" />
               </HoverCardTrigger>
               <HoverCardContent className="w-fit px-3 py-2">
                 <span className="text-sm font-mono">{profile.xpProgressPercent}% progress</span>
@@ -123,10 +119,9 @@ export function StatsProfileCard({ profile }: StatsProfileCardProps) {
         </div>
         </div>
 
-        <div className="grid border-t border-border/50 bg-muted/20 sm:grid-cols-3">
+        <div className="grid border-t border-border/50 bg-muted/20 sm:grid-cols-2">
           <StatBlock value={profile.testsCompleted.toLocaleString("en-GB")} label="Tests completed" />
           <StatBlock value={profile.timeTypingLabel} label="Time typing" withBorder />
-          <StatBlock value={profile.joinedAtLabel} label="Member since" withBorderOnDesktop />
         </div>
       </CardContent>
     </Card>

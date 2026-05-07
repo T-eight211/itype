@@ -236,17 +236,21 @@ function firstXAxis(xAxisMap: AxisScaleState["xAxisMap"]) {
   return xAxisMap[0] ?? Object.values(xAxisMap)[0];
 }
 
-/** SVG polylines aligned to chart scales — Recharts `Line` on this ComposedChart often renders invisible with dual Y + Scatter. */
+
 function MovingAveragePolylines({
   chartProps,
   chartRows,
-  showAvg10,
-  showAvg100,
+  showAvg10Wpm,
+  showAvg10Accuracy,
+  showAvg100Wpm,
+  showAvg100Accuracy,
 }: {
   chartProps: AxisScaleState;
   chartRows: ChartRow[];
-  showAvg10: boolean;
-  showAvg100: boolean;
+  showAvg10Wpm: boolean;
+  showAvg10Accuracy: boolean;
+  showAvg100Wpm: boolean;
+  showAvg100Accuracy: boolean;
 }) {
   const yMap = chartProps.yAxisMap;
   const xAxis = firstXAxis(chartProps.xAxisMap);
@@ -257,10 +261,12 @@ function MovingAveragePolylines({
   const accScale = yAcc?.scale;
   if (!xScale || !wpmScale || !accScale) return null;
 
-  const p10w = showAvg10 ? buildPolylinePoints(chartRows, "avg10Wpm", xScale, wpmScale) : null;
-  const p10a = showAvg10 ? buildPolylinePoints(chartRows, "avg10Accuracy", xScale, accScale) : null;
-  const p100w = showAvg100 ? buildPolylinePoints(chartRows, "avg100Wpm", xScale, wpmScale) : null;
-  const p100a = showAvg100 ? buildPolylinePoints(chartRows, "avg100Accuracy", xScale, accScale) : null;
+  const p10w = showAvg10Wpm ? buildPolylinePoints(chartRows, "avg10Wpm", xScale, wpmScale) : null;
+  const p10a = showAvg10Accuracy ? buildPolylinePoints(chartRows, "avg10Accuracy", xScale, accScale) : null;
+  const p100w = showAvg100Wpm ? buildPolylinePoints(chartRows, "avg100Wpm", xScale, wpmScale) : null;
+  const p100a = showAvg100Accuracy
+    ? buildPolylinePoints(chartRows, "avg100Accuracy", xScale, accScale)
+    : null;
 
   return (
     <g className="recharts-moving-average-overlay" style={{ pointerEvents: "none" }}>
@@ -374,16 +380,24 @@ export function StatsResultsGraph({
     }));
   }, [games]);
 
+  const showAvg10Wpm = showAvg10 && showWpmPoints;
+  const showAvg10Accuracy = showAvg10 && showAccuracyPoints;
+  const showAvg100Wpm = showAvg100 && showWpmPoints;
+  const showAvg100Accuracy = showAvg100 && showAccuracyPoints;
+
   const { yWpmMax, yAccMin } = React.useMemo(() => {
     const wpmVals: number[] = [];
     const accVals: number[] = [];
     for (const r of chartRows) {
       if (showWpmPoints && r.wpm != null && Number.isFinite(r.wpm)) wpmVals.push(r.wpm);
-      if (showAvg10 && r.avg10Wpm != null && Number.isFinite(r.avg10Wpm)) wpmVals.push(r.avg10Wpm);
-      if (showAvg100 && r.avg100Wpm != null && Number.isFinite(r.avg100Wpm)) wpmVals.push(r.avg100Wpm);
+      if (showAvg10Wpm && r.avg10Wpm != null && Number.isFinite(r.avg10Wpm)) wpmVals.push(r.avg10Wpm);
+      if (showAvg100Wpm && r.avg100Wpm != null && Number.isFinite(r.avg100Wpm))
+        wpmVals.push(r.avg100Wpm);
       if (showAccuracyPoints && r.accuracy != null && Number.isFinite(r.accuracy)) accVals.push(r.accuracy);
-      if (showAvg10 && r.avg10Accuracy != null && Number.isFinite(r.avg10Accuracy)) accVals.push(r.avg10Accuracy);
-      if (showAvg100 && r.avg100Accuracy != null && Number.isFinite(r.avg100Accuracy)) accVals.push(r.avg100Accuracy);
+      if (showAvg10Accuracy && r.avg10Accuracy != null && Number.isFinite(r.avg10Accuracy))
+        accVals.push(r.avg10Accuracy);
+      if (showAvg100Accuracy && r.avg100Accuracy != null && Number.isFinite(r.avg100Accuracy))
+        accVals.push(r.avg100Accuracy);
     }
     const wpmMax = wpmVals.length ? Math.max(...wpmVals) : 0;
     const accMin = accVals.length ? Math.min(...accVals) : 0;
@@ -394,7 +408,15 @@ export function StatsResultsGraph({
       yWpmMax: Math.max(10, Math.ceil(wpmMax / 10) * 10),
       yAccMin: Math.max(0, accFloor),
     };
-  }, [chartRows, showWpmPoints, showAccuracyPoints, showAvg10, showAvg100]);
+  }, [
+    chartRows,
+    showWpmPoints,
+    showAccuracyPoints,
+    showAvg10Wpm,
+    showAvg10Accuracy,
+    showAvg100Wpm,
+    showAvg100Accuracy,
+  ]);
 
   const wpmAxisTicks = React.useMemo(() => {
     const ticks: number[] = [];
@@ -738,14 +760,16 @@ export function StatsResultsGraph({
                   isAnimationActive={false}
                 />
               )}
-              {(showAvg10 || showAvg100) && (
+              {(showAvg10Wpm || showAvg10Accuracy || showAvg100Wpm || showAvg100Accuracy) && (
                 <Customized
                   component={(props: unknown) => (
                     <MovingAveragePolylines
                       chartProps={props as AxisScaleState}
                       chartRows={chartRows}
-                      showAvg10={showAvg10}
-                      showAvg100={showAvg100}
+                      showAvg10Wpm={showAvg10Wpm}
+                      showAvg10Accuracy={showAvg10Accuracy}
+                      showAvg100Wpm={showAvg100Wpm}
+                      showAvg100Accuracy={showAvg100Accuracy}
                     />
                   )}
                 />
