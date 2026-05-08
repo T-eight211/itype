@@ -24,8 +24,8 @@
 .DS_Store
 *.pem
 
-# uml / diagrams
-uml-diagram/
+# others
+/others/
 
 # debug
 npm-debug.log*
