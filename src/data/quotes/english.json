@@ -1,5 +1,8 @@
 {
   "language": "english",
+  "source": "Monkeytype",
+  "source_url": "https://github.com/monkeytypegame/monkeytype/tree/master/frontend/static/quotes",
+  "derived_from": "This file was obtained from the Monkeytype project",
   "groups": [
     [0, 100],
     [101, 300],

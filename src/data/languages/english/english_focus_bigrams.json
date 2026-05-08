@@ -1,5 +1,8 @@
 {
   "name": "english_focus_bigrams",
+  "source": "English Letter Frequency Counts: Mayzner Revisited",
+  "source_url": "https://norvig.com/mayzner.html",
+  "derived_from": "This file was derived from the English Letter Frequency Counts: Mayzner Revisited",
   "type": "bigram_list",
   "orderedByFrequency": true,
   "bigrams": [

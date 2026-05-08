@@ -18,11 +18,20 @@ export function formatWpm(n: number): string {
   return roundTo2(n).toFixed(2);
 }
 
+// -----------------------------------------------------------------------------
+// This section of code was obtained from the Monkeytype project:
+// https://github.com/monkeytypegame/monkeytype/blob/refs/heads/master/packages/util/src/numbers.ts
+// -----------------------------------------------------------------------------
+
 export function kogasa(cov: number): number {
   return (
     100 * (1 - Math.tanh(cov + Math.pow(cov, 3) / 3 + Math.pow(cov, 5) / 5))
   );
 }
+
+// -----------------------------------------------------------------------------
+// End
+// -----------------------------------------------------------------------------
 
 export function computeConsistency(burstWpm: number[]): number {
   if (!burstWpm.length) return 0;
