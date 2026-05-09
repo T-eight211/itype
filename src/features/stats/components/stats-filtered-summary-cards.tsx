@@ -1,3 +1,6 @@
+// This file was adapted from the blocks stats:
+// https://blocks.so/stats
+
 "use client";
 
 import * as React from "react";

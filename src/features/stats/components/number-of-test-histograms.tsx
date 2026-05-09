@@ -1,3 +1,6 @@
+// This file was adapted from the shadcn/ui bar charts:
+// https://ui.shadcn.com/charts/bar#charts
+
 "use client";
 
 import * as React from "react";

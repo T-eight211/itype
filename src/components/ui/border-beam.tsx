@@ -1,3 +1,6 @@
+// This file was obtained from the BadtzUI:
+// https://www.badtz-ui.com/docs/components/border-beam
+
 "use client"
 
 import React, { CSSProperties, useEffect, useRef } from "react"

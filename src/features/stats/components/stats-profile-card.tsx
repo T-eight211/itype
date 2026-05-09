@@ -1,3 +1,6 @@
+// This file was adapted from Shadcn UI Kit:
+// https://shadcnuikit.com/dashboard/pages/profile
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";

@@ -36,7 +36,7 @@ type DailyRow = {
   totalSeconds: number;
 };
 
-const MAX_NON_TIME_SESSION_SECONDS = 2 * 60 * 60; // 2 hours
+const MAX_NON_TIME_SESSION_SECONDS = 2 * 60 * 60; 
 
 function toDateKey(iso: string): string {
   try {
@@ -81,12 +81,10 @@ function saneElapsedSeconds(row: StatsGameGraphPoint): number {
   const elapsed = row.elapsedSeconds;
   if (elapsed == null || !Number.isFinite(elapsed) || elapsed <= 0) return 0;
 
-  // Time mode has a known target duration, so clamp near that target.
   if (row.gameMode === "time" && row.targetTimeSeconds != null && row.targetTimeSeconds > 0) {
     return Math.min(elapsed, row.targetTimeSeconds + 10);
   }
 
-  // Words/quote sessions should not run for hours in normal play.
   return Math.min(elapsed, MAX_NON_TIME_SESSION_SECONDS);
 }
 

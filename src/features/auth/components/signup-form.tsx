@@ -1,3 +1,6 @@
+// This file was derived from shadcn/ui blocks signup:
+// https://ui.shadcn.com/blocks/signup
+
 "use client"
 
 import { useState } from "react"

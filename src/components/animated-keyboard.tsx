@@ -1,3 +1,6 @@
+// This file was obtained from BadtzUI:
+// https://www.badtz-ui.com/docs/components/animated-keyboard
+
 import {
   Keyboard,
   Keycap,

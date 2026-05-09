@@ -1,3 +1,6 @@
+// This file was derived from See Scott Dev's YouTube tutorial:
+// https://www.youtube.com/watch?v=_9yCu6OvpXM
+
 interface KeyboardKeyProps {
   children: React.ReactNode;
   className?: string;

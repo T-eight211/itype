@@ -1,3 +1,6 @@
+// This file was adapted from shadcn-ui-calendar-heatmap repository by sp-yduck:
+// https://github.com/sp-yduck/shadcn-ui-calendar-heatmap
+
 "use client";
 
 import React from "react";

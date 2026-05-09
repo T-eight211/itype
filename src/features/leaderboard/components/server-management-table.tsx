@@ -1,3 +1,6 @@
+// This file was adapted from the 21st.dev community created by Isaiah (@isaiahbjork):
+// https://21st.dev/community/components/isaiahbjork/server-management-table/default
+
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";

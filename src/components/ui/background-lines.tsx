@@ -1,3 +1,6 @@
+// This file was obtained from the 21st.dev community created by Sonu (@uniquesonu):
+// https://21st.dev/community/components/uniquesonu/animated-svg-background/default
+
 "use client";
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
