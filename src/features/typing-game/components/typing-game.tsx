@@ -667,7 +667,8 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
             onBlur={() => game.setIsInputFocused(false)}
             dir="ltr"
             className={cn(
-              "absolute inset-0 w-full h-full resize-none rounded-md select-none typing-input-no-select cursor-default",
+              "absolute top-0 -left-[9999px] overflow-hidden resize-none rounded-md select-none typing-input-no-select cursor-default", 
+              // "absolute inset-0 w-full h-full resize-none rounded-md select-none typing-input-no-select cursor-default", //shows caps lock indicator of macos and autocomplete predictions extensions shows up
               "text-inherit leading-inherit font-mono text-left p-0",
               "bg-transparent text-transparent caret-transparent border-none outline-none",
               "placeholder:opacity-0"
