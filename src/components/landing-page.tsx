@@ -13,6 +13,22 @@ type LandingPageProps = {
   leaderboardRows: LeaderboardRow[];
 };
 
+function rankColor(rank: number): string {
+  if (rank === 1) return "text-yellow-400";
+  if (rank === 2) return "text-slate-300";
+  if (rank === 3) return "text-orange-300";
+  return "text-muted-foreground";
+}
+
+function avatarFallback(username: string): string {
+  return username.trim().charAt(0).toUpperCase() || "?";
+}
+
+function formatLeaderboardWpm(value: number): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
 export function LandingPage({ leaderboardRows }: LandingPageProps) {
   const [text, setText] = useState("");
   const fullText = "Type Faster Than Ever";
@@ -77,32 +93,63 @@ export function LandingPage({ leaderboardRows }: LandingPageProps) {
             <h2 className="mb-3 text-center text-lg font-semibold text-foreground">
               All-Time 15 Seconds - top 20
             </h2>
-            <div className="max-h-[min(70vh,32rem)] space-y-2 overflow-y-auto pr-1">
+            <div className="max-h-[min(70vh,32rem)] overflow-y-auto pr-1">
               {leaderboardRows.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">No entries yet.</p>
               ) : (
-                leaderboardRows.map((row) => (
-                  <div
-                    key={`${row.rank}-${row.userId}`}
-                    className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/25 px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">
-                        #{row.rank} {row.username}
-                      </p>
-                      {row.topBadges.length > 0 ? (
-                        <div className="mt-1 flex flex-wrap gap-1.5">
-                          {row.topBadges.slice(0, 2).map((badge) => (
-                            <Badge key={`${row.userId}-${badge.key}`} variant="secondary">
-                              {badge.name}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                    <p className="shrink-0 pl-2 text-sm font-mono text-foreground">{row.wpm.toFixed(2)} wpm</p>
+                <>
+                  <div className="grid grid-cols-12 gap-3 px-2 py-2 text-xs font-medium uppercase tracking-wider text-muted-foreground sm:gap-4 sm:px-4">
+                    <div className="col-span-2 sm:col-span-1">Rank</div>
+                    <div className="col-span-6 sm:col-span-8">Name</div>
+                    <div className="col-span-4 text-right sm:col-span-3 sm:text-left">WPM</div>
                   </div>
-                ))
+                  <div className="space-y-2">
+                    {leaderboardRows.map((row) => (
+                      <div
+                        key={`${row.rank}-${row.userId}`}
+                        className="relative rounded-xl border border-border/50 bg-muted/50 p-3 sm:p-4"
+                      >
+                        <div className="relative grid grid-cols-12 gap-3 items-center sm:gap-4">
+                          <div className="col-span-2 flex justify-start sm:col-span-1">
+                            <span className={`text-xl font-bold tabular-nums sm:text-2xl ${rankColor(row.rank)}`}>
+                              {row.rank}
+                            </span>
+                          </div>
+                          <div className="col-span-6 flex min-w-0 items-center gap-2 sm:col-span-8 sm:gap-3">
+                            {row.profileImageUrl ? (
+                              <img
+                                src={row.profileImageUrl}
+                                alt=""
+                                className="size-8 shrink-0 rounded-full border border-border/40 object-cover sm:size-9"
+                              />
+                            ) : (
+                              <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border/40 bg-muted text-xs font-semibold sm:size-9 sm:text-sm">
+                                {avatarFallback(row.username)}
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-foreground sm:text-base">
+                                {row.username}
+                              </p>
+                              {row.topBadges.length > 0 ? (
+                                <div className="mt-1 flex flex-wrap gap-1.5">
+                                  {row.topBadges.slice(0, 3).map((badge) => (
+                                    <Badge key={`${row.userId}-${badge.key}`} variant="secondary" className="text-[10px]">
+                                      {badge.name}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div className="col-span-4 text-right font-mono text-sm font-medium text-foreground tabular-nums sm:col-span-3 sm:text-left sm:text-base">
+                            {formatLeaderboardWpm(row.wpm)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </div>

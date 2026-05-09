@@ -409,7 +409,7 @@ export function ServerManagementTable({
         >
           <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
             <div className="col-span-1">Rank</div>
-            <div className="col-span-3">User</div>
+            <div className="col-span-3">Name</div>
             <div className="col-span-1">WPM</div>
             <div className="col-span-1">Raw</div>
             <div className="col-span-2">Accuracy</div>
