@@ -23,6 +23,7 @@ type TypingCoachFeedbackPanelProps = {
   showEligibilityFallback: boolean;
   selectedCoachItem: CoachItem | null;
   streamResetKey: string;
+  instantFeedbackText?: boolean;
 };
 
 const STREAM_MS_PER_CHAR = 14;
@@ -68,6 +69,7 @@ export function TypingCoachFeedbackPanel({
   feedback,
   selectedCoachItem,
   streamResetKey,
+  instantFeedbackText = false,
   eligibilityHint,
   showEligibilityFallback,
 }: TypingCoachFeedbackPanelProps) {
@@ -94,7 +96,13 @@ export function TypingCoachFeedbackPanel({
     if (selectedCoachItem) {
       return (
         <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
-          <StreamedFeedbackText key={streamResetKey} text={selectedCoachItem.feedback_text} />
+          {instantFeedbackText ? (
+            <p className="text-xs leading-relaxed whitespace-pre-wrap text-foreground">
+              {selectedCoachItem.feedback_text}
+            </p>
+          ) : (
+            <StreamedFeedbackText key={streamResetKey} text={selectedCoachItem.feedback_text} />
+          )}
         </div>
       );
     }

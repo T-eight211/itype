@@ -62,6 +62,7 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
   const [isCoachPromptStreaming, setIsCoachPromptStreaming] = useState(false);
   const coachAppliedRunIdRef = useRef<number | null>(null);
   const [coachRegenLoading, setCoachRegenLoading] = useState(false);
+  const [coachPanelNoStreamKeys, setCoachPanelNoStreamKeys] = useState<string[]>([]);
   const [feedbackState, setFeedbackState] = useState<FeedbackApiState | null>(null);
   const [eligibilityState, setEligibilityState] = useState<
     | { status: "idle" }
@@ -224,6 +225,14 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     return false;
   }, [feedbackState, eligibilityState.status]);
 
+  const coachPanelStreamResetKey = useMemo(
+    () =>
+      feedbackState?.status === "ready"
+        ? `${feedbackState.run_id}-${coachFocusIndex ?? ""}`
+        : "0",
+    [feedbackState, coachFocusIndex]
+  );
+
   const feedbackPopoverKey = useMemo(() => {
     if (!coachMode) return "";
     if (feedbackState === null) return "null";
@@ -244,6 +253,9 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     }
   }, []);
 
+  const coachPanelStreamResetKeyRef = useRef(coachPanelStreamResetKey);
+  coachPanelStreamResetKeyRef.current = coachPanelStreamResetKey;
+
   const scheduleCoachPopoverClose = useCallback(() => {
     clearCoachPopoverTimer();
     coachPopoverHoverLockRef.current = true;
@@ -251,6 +263,10 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
       setCoachPopoverOpen(false);
       coachPopoverHoverLockRef.current = false;
       coachPopoverTimerRef.current = null;
+      const k = coachPanelStreamResetKeyRef.current;
+      if (k !== "0") {
+        setCoachPanelNoStreamKeys((prev) => (prev.includes(k) ? prev : [...prev, k]));
+      }
     }, COACH_POPOVER_AUTO_CLOSE_MS);
   }, [clearCoachPopoverTimer]);
 
@@ -259,6 +275,7 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
       clearCoachPopoverTimer();
       coachPopoverHoverLockRef.current = false;
       setCoachPopoverOpen(false);
+      setCoachPanelNoStreamKeys([]);
       return;
     }
     setCoachPopoverOpen(true);
@@ -412,7 +429,6 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
                   ? "border-primary/60 bg-primary/15 text-primary"
                   : "border-border/60 bg-muted/50"
               )}
-              title="AI coaching"
               aria-label="AI coaching"
               aria-pressed={coachMode}
               aria-expanded={coachMode && coachPopoverOpen}
@@ -433,10 +449,10 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
             <TypingCoachFeedbackPanel
               feedback={feedbackPanelPayload}
               selectedCoachItem={coachDisplayItem}
-              streamResetKey={
-                feedbackState?.status === "ready"
-                  ? `${feedbackState.run_id}-${coachFocusIndex ?? ""}`
-                  : "0"
+              streamResetKey={coachPanelStreamResetKey}
+              instantFeedbackText={
+                coachPanelStreamResetKey !== "0" &&
+                coachPanelNoStreamKeys.includes(coachPanelStreamResetKey)
               }
               eligibilityHint={noneFallbackText || aiHintMessage}
               showEligibilityFallback={showEligibilityFallback}
