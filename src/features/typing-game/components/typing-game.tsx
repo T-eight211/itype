@@ -43,7 +43,7 @@ type FeedbackApiState =
     }
   | { status: "error" };
 
-const COACH_POPOVER_AUTO_CLOSE_MS = 8000;
+const COACH_POPOVER_AUTO_CLOSE_MS = 10000;
 const SHOW_DEBUG_PANEL = false;
 const SHOW_WORD_MISTAKES_PANEL = false;
 
@@ -613,7 +613,10 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
           <div
             ref={scrollContainerRef}
             className={cn(
-              "overflow-y-auto overflow-x-hidden select-none typing-game-scroll-hide cursor-default",
+              game.isGameEnded
+                ? "overflow-y-auto overflow-x-hidden"
+                : "overflow-hidden",
+              "select-none typing-game-scroll-hide cursor-default",
               "text-xl md:text-2xl leading-relaxed font-mono",
               "h-[calc(3*1.625*1em)]"
             )}
