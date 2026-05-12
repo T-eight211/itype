@@ -1,45 +1,204 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# itype — Project setup guide
 
-## Getting Started
+This is a Next.js project bootstrapped with `create-next-app`.
 
-First, run the development server:
+This README documents the manual setup steps required to run this project locally and deploy it (Clerk auth, Supabase/Postgres configuration, Prisma, and Vercel AI gateway). Follow each section in order.
+
+---
+
+## 1. Getting started (development)
+
+Install dependencies and run the dev server:
 
 ```bash
+npm install
+# or
+yarn
+# then
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000 in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The main page is `app/page.tsx`. The page auto-updates as you edit files.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 2. Files to rename / create
 
-To learn more about Next.js, take a look at the following resources:
+- Rename the example environment file from:
+  - `.evn.local.example` → `.env.local`
+  - (If you already have `.env.local`, merge the values instead of overwriting.)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 3. Clerk (authentication) setup
 
-## Deploy on Vercel
+1. Create a Clerk account: https://clerk.com (sign up for a free account).
+2. Create a new application in Clerk (give it any name you like).
+3. Configure sign-in methods for the app:
+   - Enable Email sign-in.
+   - Enable Google sign-in.
+4. Configure project settings in Clerk:
+   - Go to Configure → Project → Attack protection → Turn **off** Bot sign-up protection (per your instructions).
+   - Go to Configure → User & Authentication → Password → Update password requirements → Turn **on** enforce minimum password strength.
+   - Go to Configure → User & Authentication → Username → Turn **on** sign up with username, turn **on** required username, and turn **on** sign-in with username.
+   - Go to Configure → User & Authentication → User model → Turn **off** first and last name fields (if you do not want them).
+5. Get your API keys (Publishable and Secret) for the application:
+   - In Clerk dashboard: Configure → API keys → Use the Quick copy for Next.js to copy the recommended values.
+   - Add them to your `.env.local` (see the example at the end of this README).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Clerk environment variables (placeholders):
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+```
 
-## Credit
+---
+
+## 4. Supabase / Postgres setup
+
+1. Create a Supabase account: https://supabase.com
+2. Create a new project and give it a name of your choice. Choose a password — you will use this later (remember it).
+3. Open the SQL editor in the Supabase dashboard and run the first SQL block to create a custom user role for Prisma (replace 'custom_password' with your chosen password):
+
+```sql
+-- Create custom user
+create user "prisma" with password 'custom_password' bypassrls createdb;
+
+-- extend prisma's privileges to postgres (necessary to view changes in Dashboard)
+grant "prisma" to "postgres";
+
+-- Grant it necessary permissions over the relevant schemas (public)
+grant usage on schema public to prisma;
+grant create on schema public to prisma;
+grant all on all tables in schema public to prisma;
+grant all on all routines in schema public to prisma;
+grant all on all sequences in schema public to prisma;
+alter default privileges for role postgres in schema public grant all on tables to prisma;
+alter default privileges for role postgres in schema public grant all on routines to prisma;
+alter default privileges for role postgres in schema public grant all on sequences to prisma;
+```
+
+4. In the Supabase dashboard click "Connect" → "Connection string" → "ORM" (or the connection settings). Copy the connection string template and replace placeholders as described below.
+
+5. Add the connection strings to your `.env.local`. Replace the placeholders below:
+   - [DB-USER] = `prisma`
+   - [PROJECT-REF] = your Supabase project reference (found in the Supabase dashboard / connection info)
+   - [PRISMA-PASSWORD] = the password you set earlier (e.g. `custom_password`)
+
+Example (use correct values from Supabase; do not include quotes unless your platform requires them):
+
+```bash
+DATABASE_URL="postgres://[DB-USER].[PROJECT-REF]:[PRISMA-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+
+DIRECT_URL="postgres://[DB-USER].[PROJECT-REF]:[PRISMA-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
+```
+
+6. Create the `public.users` table and RLS policies (run this SQL in Supabase SQL editor):
+
+```sql
+create table public.users (
+  id integer generated by default as identity primary key,
+  user_id text not null unique default (auth.jwt() ->> 'sub'::text)
+);
+
+alter table public.users enable row level security;
+
+-- Policy: User can view their own profile
+create policy "User can view their own profile"
+on public.users
+for select
+to authenticated
+using (
+  (auth.jwt() ->> 'sub'::text) = user_id
+);
+
+-- Policy: Users must insert their own profile
+create policy "Users must insert their own profile"
+on public.users
+for insert
+to authenticated
+with check (
+  (auth.jwt() ->> 'sub'::text) = user_id
+);
+```
+
+---
+
+## 5. Prisma setup (local)
+
+From your project directory:
+
+```bash
+# install dependencies
+npm install
+
+# push Prisma schema to the database
+npx prisma db push
+
+# generate Prisma client
+npx prisma generate
+
+# run the dev server
+npm run dev
+```
+
+Note: If your project uses a different package manager, use `yarn` or `pnpm` equivalents.
+
+---
+
+## 6. Vercel setup (for deployment & AI Gateway)
+
+1. Create a Vercel account: https://vercel.com/home
+2. Create a hobby workspace and give it a name of your choice.
+3. In the Vercel dashboard, go to AI Gateway in the sidebar.
+   - (You may need to add a card to your account to get free credits; Vercel sometimes requires billing to generate API keys.)
+4. Create an API key in the AI Gateway area and copy it.
+5. Add the API key to your `.env.local`:
+
+```bash
+VERCEL_AI_GATEWAY_API_KEY=
+```
+
+---
+
+## 7. Final `.env.local` example
+
+Replace all placeholder values with the actual values from Clerk, Supabase, and Vercel.
+
+```env
+# Clerk
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+
+# Database (example placeholders — replace with your Supabase values)
+DATABASE_URL="postgresql://prisma.[PROJECT-REF]:custom_password@aws-1-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://prisma.[PROJECT-REF]:custom_password@aws-1-eu-west-1.pooler.supabase.com:5432/postgres"
+
+# Vercel AI Gateway
+VERCEL_AI_GATEWAY_API_KEY=
+```
+
+---
+
+## 8. Summary / troubleshooting tips
+
+- Double-check that Clerk publishable and secret keys are for the correct Clerk application and environment (development vs production).
+- Ensure your Supabase connection strings match the project reference and the `prisma` user password you created.
+- If Prisma commands fail, re-check `DATABASE_URL` for typos and ensure the `prisma` user has the proper privileges in Supabase.
+- If you need to re-run SQL statements, be careful to avoid creating duplicate users or policies; inspect the DB schema first.
+
+---
+
+## Credits
+
 Layouts, languages, and quotes are extracted from the Monkeytype project:
 https://github.com/monkeytypegame/monkeytype/tree/master/frontend/static
 
 Monkeytype is Copyright (C) 2020-2024 Monkeytype and contributors.
 
 This project is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-
