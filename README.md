@@ -6,6 +6,14 @@ This README documents the manual setup steps required to run this project locall
 
 ---
 
+## Hosted demo
+
+You can access the hosted version of the app at: https://itype.tech
+
+Visit the site to try the app without running it locally. If you deploy your own instance, make sure the environment variables and services described below are configured.
+
+---
+
 ## 1. Getting started (development)
 
 Install dependencies and run the dev server:
@@ -201,4 +209,4 @@ https://github.com/monkeytypegame/monkeytype/tree/master/frontend/static
 
 Monkeytype is Copyright (C) 2020-2024 Monkeytype and contributors.
 
-This project is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+This project is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License,[...]
