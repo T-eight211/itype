@@ -1,4 +1,4 @@
-# itype — Project setup guide
+# Itype — Project setup guide
 
 This is a Next.js project bootstrapped with `create-next-app`.
 
