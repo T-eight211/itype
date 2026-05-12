@@ -2,7 +2,7 @@
 
 This is a Next.js project bootstrapped with `create-next-app`.
 
-This README documents the manual setup steps required to run this project locally and deploy it (Clerk auth, Supabase/Postgres configuration, Prisma, and Vercel AI gateway). Follow each section in order.
+This README documents the manual setup steps required to run this project locally and deploy it (Clerk auth, Supabase/Postgres configuration, Prisma and Vercel AI gateway). Follow each section in order.
 
 ---
 
@@ -52,7 +52,7 @@ The main page is `app/page.tsx`. The page auto-updates as you edit files.
 4. Configure project settings in Clerk:
    - Go to Configure → Project → Attack protection → Turn **off** Bot sign-up protection (per your instructions).
    - Go to Configure → User & Authentication → Password → Update password requirements → Turn **on** enforce minimum password strength.
-   - Go to Configure → User & Authentication → Username → Turn **on** sign up with username, turn **on** required username, and turn **on** sign-in with username.
+   - Go to Configure → User & Authentication → Username → Turn **on** sign up with username, turn **on** required username and turn **on** sign-in with username.
    - Go to Configure → User & Authentication → User model → Turn **off** first and last name fields (if you do not want them).
 5. Get your API keys (Publishable and Secret) for the application:
    - In Clerk dashboard: Configure → API keys → Use the Quick copy for Next.js to copy the recommended values.
@@ -176,7 +176,7 @@ VERCEL_AI_GATEWAY_API_KEY=
 
 ## 7. Final `.env.local` example
 
-Replace all placeholder values with the actual values from Clerk, Supabase, and Vercel.
+Replace all placeholder values with the actual values from Clerk, Supabase and Vercel.
 
 ```env
 # Clerk
@@ -204,7 +204,7 @@ VERCEL_AI_GATEWAY_API_KEY=
 
 ## Credits
 
-Layouts, languages, and quotes are extracted from the Monkeytype project:
+Layouts, languages and quotes are extracted from the Monkeytype project:
 https://github.com/monkeytypegame/monkeytype/tree/master/frontend/static
 
 Monkeytype is Copyright (C) 2020-2024 Monkeytype and contributors.
