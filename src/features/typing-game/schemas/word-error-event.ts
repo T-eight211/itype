@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-// ── Shared enums (derived from qwerty.json geometry) ──
-
 export const KeyboardRowSchema = z
   .enum(["number", "top", "home", "bottom", "space"])
   .describe("Physical keyboard row the key sits on (ANSI QWERTY).")
@@ -58,8 +56,6 @@ export const ErrorTypeSchema = z
     db_column: "word_error_events.error_type",
   });
 
-// ── Per-pair detail (used by substitution_sequence & transposition) ──
-
 export const KeyPairDetailSchema = z
   .object({
     expected: z
@@ -99,8 +95,6 @@ export const KeyPairDetailSchema = z
   })
   .describe("Keyboard-geometry detail for one expected→actual character pair.")
   .meta({ dev: "Reused in SequenceDetailsSchema.pairs[] for both substitution_sequence and transposition" });
-
-// ── details_jsonb variants per error_type ──
 
 const SubstitutionDetailsSchema = z
   .object({
@@ -212,8 +206,6 @@ const PauseDetailsSchema = z
     db_column: "word_error_events.details_jsonb",
   });
 
-// ── Base fields shared by every event ──
-
 const WordErrorEventBaseSchema = z.object({
   event_order: z
     .number()
@@ -294,8 +286,6 @@ const WordErrorEventBaseSchema = z.object({
     }),
 });
 
-// ── Discriminated union: one variant per error_type ──
-
 export const SubstitutionEventSchema = WordErrorEventBaseSchema.extend({
   error_type: z.literal("substitution"),
   details_jsonb: SubstitutionDetailsSchema,
@@ -374,8 +364,6 @@ export const PauseEventSchema = WordErrorEventBaseSchema.extend({
     db_table: "word_error_events",
   });
 
-// ── The union ──
-
 export const WordErrorEventSchema = z
   .discriminatedUnion("error_type", [
     SubstitutionEventSchema,
@@ -389,8 +377,6 @@ export const WordErrorEventSchema = z
       "AI: group by error_type across sessions to find persistent weaknesses; " +
       "use details_jsonb for root-cause analysis (motor vs cognitive)."
   );
-
-// ── Inferred types ──
 
 export type WordErrorEvent = z.infer<typeof WordErrorEventSchema>;
 export type KeyPairDetail = z.infer<typeof KeyPairDetailSchema>;

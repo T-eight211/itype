@@ -19,7 +19,6 @@ export async function saveWordMistakes(raw: unknown) {
 
   try {
     await prisma.$transaction(async (tx) => {
-      // Verify the typing result belongs to the current user
       const result = await tx.typingResults.findFirst({
         where: { id: typing_result_id, user_id: userId },
         select: { id: true },

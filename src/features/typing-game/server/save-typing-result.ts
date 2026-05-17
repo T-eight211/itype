@@ -54,8 +54,6 @@ export async function saveTypingResult(input: SaveTypingResultInput) {
   try {
     const resultId = await prisma.$transaction(async (tx) => {
       const endedAt = new Date();
-
-      // Ensure `users` row exists; `typing_results.user_id` FK → `users.user_id` (Clerk `sub`).
       await tx.user.upsert({
         where: { user_id: userId },
         create: { user_id: userId },

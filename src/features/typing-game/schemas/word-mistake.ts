@@ -254,8 +254,6 @@ export const WordMistakeSchema = z
     db_fk: "word_mistakes.typing_result_id → typing_results.id",
   });
 
-// ── Batch envelope (what the API route receives) ──
-
 export const WordMistakeBatchSchema = z
   .object({
     typing_result_id: z
@@ -286,8 +284,6 @@ export const WordMistakeBatchSchema = z
     endpoint: "POST /api/typing/word-mistakes or server action",
     writes_to: ["word_mistakes", "word_error_events"],
   });
-
-// ── Inferred types ──
 
 export type WordMistake = z.infer<typeof WordMistakeSchema>;
 export type WordMistakeBatch = z.infer<typeof WordMistakeBatchSchema>;
