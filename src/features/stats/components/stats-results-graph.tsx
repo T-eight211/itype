@@ -96,7 +96,6 @@ const STATS_GRAPH_TOOLTIP_MONTHS = [
   "Dec",
 ] as const;
 
-/** e.g. `07 Mar 2026 23:21` */
 function formatStatsGraphTooltipDate(iso: string) {
   try {
     const d = new Date(iso);
@@ -112,7 +111,6 @@ function formatStatsGraphTooltipDate(iso: string) {
   }
 }
 
-/** One-line preset for tooltips, e.g. `time 30`, `word 10`, `quote short`. */
 function formatStatsGraphGameMode(row: ChartRow): string {
   if (row.gameMode === "time" && row.targetTimeSeconds != null) {
     return `time ${row.targetTimeSeconds}`;
@@ -123,7 +121,7 @@ function formatStatsGraphGameMode(row: ChartRow): string {
   if (row.gameMode === "quote") {
     return row.quoteLength ? `quote ${row.quoteLength}` : "quote";
   }
-  return row.gameMode ?? "—";
+  return row.gameMode ?? "-";
 }
 
 function WpmDot(props: unknown) {
@@ -172,9 +170,9 @@ function StatsGraphTooltip(props: TooltipProps<number, string>) {
 
   if (!wpmEntry && !accEntry) return null;
 
-  const wpmStr = row.wpm != null && Number.isFinite(row.wpm) ? row.wpm.toFixed(2) : "—";
-  const rawStr = row.rawWpm != null && Number.isFinite(row.rawWpm) ? row.rawWpm.toFixed(2) : "—";
-  const dateStr = row.endedAt ? formatStatsGraphTooltipDate(row.endedAt) : "—";
+  const wpmStr = row.wpm != null && Number.isFinite(row.wpm) ? row.wpm.toFixed(2) : "-";
+  const rawStr = row.rawWpm != null && Number.isFinite(row.rawWpm) ? row.rawWpm.toFixed(2) : "-";
+  const dateStr = row.endedAt ? formatStatsGraphTooltipDate(row.endedAt) : "-";
 
   return (
     <div className="grid min-w-40 gap-0 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
@@ -198,10 +196,10 @@ function StatsGraphTooltip(props: TooltipProps<number, string>) {
       <div className="my-2 h-px w-full bg-border/60" aria-hidden />
       <div className="grid gap-1 font-mono text-muted-foreground">
         <div>
-          error rate: <span className="text-foreground">{err != null ? `${err.toFixed(2)}%` : "—"}</span>
+          error rate: <span className="text-foreground">{err != null ? `${err.toFixed(2)}%` : "-"}</span>
         </div>
         <div>
-          acc: <span className="text-foreground">{acc != null ? `${acc.toFixed(2)}%` : "—"}</span>
+          acc: <span className="text-foreground">{acc != null ? `${acc.toFixed(2)}%` : "-"}</span>
         </div>
       </div>
     </div>

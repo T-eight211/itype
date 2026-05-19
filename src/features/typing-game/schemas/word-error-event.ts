@@ -93,7 +93,7 @@ const TranspositionDetailsSchema = z
     pairs: z
       .array(KeyPairDetailSchema)
       .length(2)
-      .describe("Exactly 2 entries — the two swapped characters."),
+      .describe("Exactly 2 entries - the two swapped characters."),
   })
   .describe(
     "Transposition detail. AI: very common for cross-hand bigrams; if same_hand check finger ordering."
@@ -245,7 +245,7 @@ export const SubstitutionEventSchema = WordErrorEventBaseSchema.extend({
 })
   .describe(
     "One or more consecutive wrong keys. " +
-      "AI: for single-char, check adjacent_key_slip — true means motor slip; " +
+      "AI: for single-char, check adjacent_key_slip - true means motor slip; " +
       "for sequences, uniform key_distance across pairs suggests hand-shift, varied suggests distraction."
   );
 

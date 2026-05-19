@@ -1,4 +1,4 @@
-# Itype — Project setup guide
+# Itype - Project setup guide
 
 This is a Next.js project bootstrapped with `create-next-app`.
 
@@ -70,7 +70,7 @@ CLERK_SECRET_KEY=
 ## 4. Supabase / Postgres setup
 
 1. Create a Supabase account: https://supabase.com
-2. Create a new project and give it a name of your choice. Choose a password — you will use this later (remember it).
+2. Create a new project and give it a name of your choice. Choose a password - you will use this later (remember it).
 3. Open the SQL editor in the Supabase dashboard and run the first SQL block to create a custom user role for Prisma (replace 'custom_password' with your chosen password):
 
 ```sql
@@ -183,7 +183,7 @@ Replace all placeholder values with the actual values from Clerk, Supabase and V
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
 
-# Database (example placeholders — replace with your Supabase values)
+# Database (example placeholders - replace with your Supabase values)
 DATABASE_URL="postgresql://prisma.[PROJECT-REF]:custom_password@aws-1-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
 DIRECT_URL="postgresql://prisma.[PROJECT-REF]:custom_password@aws-1-eu-west-1.pooler.supabase.com:5432/postgres"
 

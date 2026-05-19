@@ -25,7 +25,7 @@ function avatarFallback(username: string): string {
 }
 
 function formatLeaderboardWpm(value: number): string {
-  if (value == null || Number.isNaN(value)) return "—";
+  if (value == null || Number.isNaN(value)) return "-";
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
 

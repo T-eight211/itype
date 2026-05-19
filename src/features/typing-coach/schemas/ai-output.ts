@@ -66,7 +66,7 @@ const typingCoachItemGenerateSchema = z
       .min(WORD_PER_ITEM_TARGET_MIN)
       .max(WORD_PER_ITEM_TARGET_MAX)
       .describe(
-        `About 30–50 practice words for THIS weakness only — not shared with other items. Target ${WORD_PER_ITEM_TARGET_MIN}–${WORD_PER_ITEM_TARGET_MAX} entries before normalization.`
+        `About 30–50 practice words for THIS weakness only - not shared with other items. Target ${WORD_PER_ITEM_TARGET_MIN}–${WORD_PER_ITEM_TARGET_MAX} entries before normalization.`
       ),
   })
   .describe(
@@ -83,7 +83,7 @@ export const TypingCoachAIGenerateSchema = z
       .min(1)
       .max(MAX_WEAKNESSES)
       .describe(
-        `Ordered list of coaching items (1–${MAX_WEAKNESSES}). Count is not fixed — return only weaknesses clearly supported by telemetry. Fewer is fine; more only when clearly distinct and useful.`
+        `Ordered list of coaching items (1-${MAX_WEAKNESSES}). Count is not fixed - return only weaknesses clearly supported by telemetry. Fewer is fine; more only when clearly distinct and useful.`
       ),
   })
   .describe(

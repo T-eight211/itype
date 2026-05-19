@@ -17,7 +17,7 @@ import type { StatsGameGraphPoint } from "@/features/stats/server/get-stats-resu
 const PAGE_SIZE = 25;
 
 function formatNumber(value: number | null, suffix = ""): string {
-  if (value == null || !Number.isFinite(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "-";
   return `${value.toFixed(2)}${suffix}`;
 }
 
@@ -25,7 +25,7 @@ function formatMode(row: StatsGameGraphPoint): string {
   if (row.gameMode === "time" && row.targetTimeSeconds != null) return `time ${row.targetTimeSeconds}`;
   if (row.gameMode === "words" && row.targetWordCount != null) return `words ${row.targetWordCount}`;
   if (row.gameMode === "quote") return row.quoteLength ? `quote ${row.quoteLength}` : "quote";
-  return row.gameMode ?? "—";
+  return row.gameMode ?? "-";
 }
 
 function formatDate(iso: string): string {
@@ -36,7 +36,7 @@ function formatDate(iso: string): string {
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "-";
   return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
 

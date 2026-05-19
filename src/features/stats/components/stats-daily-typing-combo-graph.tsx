@@ -132,16 +132,16 @@ function DailyTypingTooltip(props: TooltipProps<number, string>) {
       <div className="font-mono text-muted-foreground">Time Typing: {formatHms(row.totalSeconds)}</div>
       <div className="font-mono text-muted-foreground">Tests Completed: {row.testsCompleted}</div>
       <div className="font-mono text-muted-foreground">
-        Highest WPM: {row.highestWpm != null ? row.highestWpm.toFixed(2) : "—"}
+        Highest WPM: {row.highestWpm != null ? row.highestWpm.toFixed(2) : "-"}
       </div>
       <div className="font-mono text-muted-foreground">
-        Average WPM: {row.avgWpm != null ? row.avgWpm.toFixed(2) : "—"}
+        Average WPM: {row.avgWpm != null ? row.avgWpm.toFixed(2) : "-"}
       </div>
       <div className="font-mono text-muted-foreground">
-        Average Accuracy: {row.avgAccuracy != null ? `${row.avgAccuracy.toFixed(2)}%` : "—"}
+        Average Accuracy: {row.avgAccuracy != null ? `${row.avgAccuracy.toFixed(2)}%` : "-"}
       </div>
       <div className="font-mono text-muted-foreground">
-        Average Consistency: {row.avgConsistency != null ? `${row.avgConsistency.toFixed(2)}%` : "—"}
+        Average Consistency: {row.avgConsistency != null ? `${row.avgConsistency.toFixed(2)}%` : "-"}
       </div>
     </div>
   );

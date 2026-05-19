@@ -41,7 +41,7 @@ function formatHms(totalSeconds: number): string {
 }
 
 function formatMetric(value: number | null, asPercent = false): string {
-  if (value == null || !Number.isFinite(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "-";
   return asPercent ? `${value.toFixed(2)}%` : value.toFixed(2);
 }
 

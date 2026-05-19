@@ -225,7 +225,7 @@ export const WordMistakeBatchSchema = z
       .number()
       .int()
       .positive()
-      .describe("FK to typing_results.id — the game session these mistakes belong to.")
+      .describe("FK to typing_results.id - the game session these mistakes belong to.")
       .meta({
         db_column: "word_mistakes.typing_result_id",
       }),
