@@ -11,34 +11,22 @@ export const PositionBucketCountsSchema = z
       .number()
       .int()
       .nonnegative()
-      .describe("Count of word records whose word_index falls in the start segment.")
-      .meta({
-        dev: "Derived from word_index and words_reached_at_end bucketing.",
-      }),
+      .describe("Count of word records whose word_index falls in the start segment."),
     middle_count: z
       .number()
       .int()
       .nonnegative()
-      .describe("Count of word records whose word_index falls in the middle segment.")
-      .meta({
-        dev: "Derived from word_index and words_reached_at_end bucketing.",
-      }),
+      .describe("Count of word records whose word_index falls in the middle segment."),
     end_count: z
       .number()
       .int()
       .nonnegative()
-      .describe("Count of word records whose word_index falls in the end segment.")
-      .meta({
-        dev: "Derived from word_index and words_reached_at_end bucketing.",
-      }),
+      .describe("Count of word records whose word_index falls in the end segment."),
     total_count: z
       .number()
       .int()
       .nonnegative()
-      .describe("Total records considered for start/middle/end positional buckets.")
-      .meta({
-        dev: "Usually start_count + middle_count + end_count.",
-      }),
+      .describe("Total records considered for start/middle/end positional buckets."),
   })
   .describe("Positional distribution of attempted words across the prompt.")
   .meta({
@@ -57,10 +45,7 @@ export const FinalWordVariantSchema = z
       .number()
       .int()
       .nonnegative()
-      .describe("How many times this final_word variant occurred for the same target_word.")
-      .meta({
-        dev: "Frequency count inside one target_word aggregate.",
-      }),
+      .describe("How many times this final_word variant occurred for the same target_word."),
   })
   .describe("One observed final_word variant and its frequency.")
   .meta({
@@ -80,17 +65,11 @@ export const TargetWordAggregateSchema = z
       .number()
       .int()
       .nonnegative()
-      .describe("Total attempts logged for this target_word across the aggregate window.")
-      .meta({
-        dev: "Count of word_mistake rows with the same target_word.",
-      }),
+      .describe("Total attempts logged for this target_word across the aggregate window."),
     final_variants: z
       .array(FinalWordVariantSchema)
       .default([])
-      .describe("Distribution of final_word outcomes for this target_word.")
-      .meta({
-        dev: "Useful for confusion patterns and custom drill generation.",
-      }),
+      .describe("Distribution of final_word outcomes for this target_word."),
   })
   .describe("Aggregate view of one target_word and its observed typed outcomes.")
   .meta({
@@ -143,10 +122,7 @@ export const CountAndMeanSchema = z
       .nonnegative()
       .describe("Arithmetic mean across included records."),
   })
-  .describe("Generic numeric aggregate with total and mean.")
-  .meta({
-    dev: "Used for correction/backspace summaries.",
-  });
+  .describe("Generic numeric aggregate with total and mean.");
 
 export const MaxPauseSummarySchema = z
   .object({
@@ -225,18 +201,12 @@ export const AggregatedErrorEventSchema = z
       .nonnegative()
       .nullable()
       .optional()
-      .describe("Mean pause_ms for grouped rows (typically relevant for pause error_type).")
-      .meta({
-        dev: "Null when no pause_ms values exist for this grouped key.",
-      }),
+      .describe("Mean pause_ms for grouped rows (typically relevant for pause error_type)."),
     details_jsonb: z
       .unknown()
       .nullable()
       .optional()
-      .describe("Representative details_jsonb for the grouped error key.")
-      .meta({
-        dev: "Assumes details_jsonb is stable for this key. If not stable, switch to variant list with counts.",
-      }),
+      .describe("Representative details_jsonb for the grouped error key."),
   })
   .describe("Aggregated error-event signature and counters for AI pattern analysis.")
   .meta({
@@ -329,10 +299,7 @@ export const TypingCoachAIAggregateSchema = z
     user_id: z
       .string()
       .min(1)
-      .describe("User identifier that this aggregate belongs to.")
-      .meta({
-        dev: "Typically Clerk user_id / subject used in typing_results.",
-      }),
+      .describe("User identifier that this aggregate belongs to."),
     window_days: z
       .number()
       .int()
@@ -394,10 +361,7 @@ export const TypingCoachAIInputSchema = z
   .object({
     aggregate: TypingCoachAIAggregateSchema.describe("Structured aggregated telemetry input."),
   })
-  .describe("Top-level payload sent to the typing coach AI prompt builder.")
-  .meta({
-    dev: "Validate this before prompt construction and model invocation.",
-  });
+  .describe("Top-level payload sent to the typing coach AI prompt builder.");
 
 export type FinalStatus = z.infer<typeof FinalStatusSchema>;
 export type TypingCoachAIAggregate = z.infer<typeof TypingCoachAIAggregateSchema>;

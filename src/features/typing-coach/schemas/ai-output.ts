@@ -15,10 +15,7 @@ const practiceWordStoredSchema = z
   .regex(PRACTICE_WORD_REGEX)
   .describe(
     "One practice word: lowercase a–z, optional internal apostrophes for valid English contractions. No spaces or other punctuation."
-  )
-  .meta({
-    dev: "JSON array in TypingCoachAiFeedbackItem.practice_words. Apostrophe is ASCII U+0027.",
-  });
+  );
 
 function normalizePracticeToken(raw: string): string | null {
   const trimmed = raw.trim().toLowerCase();
@@ -55,10 +52,7 @@ const typingCoachItemGenerateSchema = z
         "Exactly 2–3 sentences. Sentence 1: name the weakness with concrete evidence (exact chars, sequences, positions, or pause tied to a specific transition). " +
           "Sentence 2: likely QWERTY touch-typing cause when inferable (finger, row, reach, same-hand, adjacent slip). " +
           "Sentence 3: one concrete correction strategy or drill. No vague 'you pause a lot', no generic 'practice more', no emojis or hype."
-      )
-      .meta({
-        dev: "Shown in UI; streamed in hover card. Must cite specifics from aggregate telemetry when possible.",
-      }),
+      ),
     practice_words: z
       .array(
         z
@@ -73,10 +67,7 @@ const typingCoachItemGenerateSchema = z
       .max(WORD_PER_ITEM_TARGET_MAX)
       .describe(
         `About 30–50 practice words for THIS weakness only — not shared with other items. Target ${WORD_PER_ITEM_TARGET_MIN}–${WORD_PER_ITEM_TARGET_MAX} entries before normalization.`
-      )
-      .meta({
-        dev: "Per-item pool mixed into prompts with coachMixProbability in use-typing-game.",
-      }),
+      ),
   })
   .describe(
     "One distinct, evidence-backed weakness. Omit items that would duplicate or lack support in the aggregate."
@@ -93,10 +84,7 @@ export const TypingCoachAIGenerateSchema = z
       .max(MAX_WEAKNESSES)
       .describe(
         `Ordered list of coaching items (1–${MAX_WEAKNESSES}). Count is not fixed — return only weaknesses clearly supported by telemetry. Fewer is fine; more only when clearly distinct and useful.`
-      )
-      .meta({
-        dev: "Passed to generateObject(). Each item maps to one TypingCoachAiFeedback row.",
-      }),
+      ),
   })
   .describe(
     "Typing coach structured output: distinct weaknesses, each with feedback + dedicated practice_words list."

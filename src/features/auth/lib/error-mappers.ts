@@ -101,7 +101,6 @@ export function mapSignupErrors(errors: any[]): {
             fieldErrors.username = errorMessage || "Username is invalid or already taken."
           }
         } else {
-          console.warn("Unhandled error:", error)
           formError = errorMessage || "An error occurred. Please try again."
         }
     }

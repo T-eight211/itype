@@ -13,7 +13,6 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 
-import { mean, stdDev } from "../utils/stats";
 import { useTypingGame, type GameMode } from "../hooks/use-typing-game";
 import { useLineMeasurement } from "../hooks/use-line-measurement";
 import { ResultGraph } from "./result-graph";
@@ -44,8 +43,6 @@ type FeedbackApiState =
   | { status: "error" };
 
 const COACH_POPOVER_AUTO_CLOSE_MS = 10000;
-const SHOW_DEBUG_PANEL = false;
-const SHOW_WORD_MISTAKES_PANEL = false;
 
 export function TypingGame({ urlMode = null }: TypingGameProps) {
   const keymap = useTypingGameKeymap();
@@ -199,13 +196,6 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     if (feedbackState?.status !== "ready" || coachFocusIndex === null) return null;
     return `${feedbackState.run_id}:${coachFocusIndex}`;
   }, [coachMode, feedbackState, coachFocusIndex]);
-
-  const coachDebugInfo = useMemo(() => {
-    if (feedbackState?.status !== "ready" || coachFocusIndex === null || !coachDisplayItem) {
-      return "";
-    }
-    return `run=${feedbackState.run_id} item=${coachFocusIndex + 1}/${feedbackState.items.length} pool=${coachWords.length} mix=0.9 words=[${coachWords.join(", ")}]`;
-  }, [feedbackState, coachFocusIndex, coachDisplayItem, coachWords]);
 
   const noneFallbackText = useMemo(() => {
     if (feedbackState?.status !== "none") return "";
@@ -686,8 +676,7 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
             onBlur={() => game.setIsInputFocused(false)}
             dir="ltr"
             className={cn(
-              "absolute top-0 -left-[9999px] overflow-hidden resize-none rounded-md select-none typing-input-no-select cursor-default", 
-              // "absolute inset-0 w-full h-full resize-none rounded-md select-none typing-input-no-select cursor-default", //shows caps lock indicator of macos and autocomplete predictions extensions shows up
+              "absolute top-0 -left-[9999px] overflow-hidden resize-none rounded-md select-none typing-input-no-select cursor-default",
               "text-inherit leading-inherit font-mono text-left p-0",
               "bg-transparent text-transparent caret-transparent border-none outline-none",
               "placeholder:opacity-0"
@@ -796,54 +785,6 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
         />
       )}
 
-      {SHOW_DEBUG_PANEL ? (
-        <div className="mt-4 rounded border border-border bg-muted/30 p-3 font-mono text-xs overflow-x-auto">
-          <div className="mb-1 font-semibold text-muted-foreground">Debug</div>
-          <div className="grid gap-1">
-            <DebugRow label="promptCursor" value={`${game.alignment.promptCursor} / ${game.displayText.length}`} />
-            <DebugRow label="input length" value={game.alignment.inputCursor} />
-            <DebugRow
-              label="raw chars"
-              value={Math.max(0, game.rawInput.length - game.alignment.cells.filter((c) => c.type === "extra").length)}
-            />
-            <DebugRow label="chars (correct)" value={game.correctCharsSoFar} />
-            <DebugRow label="rawInput" value={JSON.stringify(game.rawInput)} />
-            <DebugRow label="cursorCellIndex" value={game.alignment.cursorCellIndex} />
-            <DebugRow label="accuracy" value={`${game.correctKeystrokes} correct / ${game.incorrectKeystrokes} incorrect`} />
-            {coachDebugInfo && <DebugRow label="coach" value={coachDebugInfo} />}
-
-            {game.burstWpm.length > 0 && (
-              <>
-                <DebugRow label="burstWpm" value={`[${game.burstWpm.join(", ")}]`} />
-                <DebugRow label="wpmHistory" value={`[${game.wpmHistory.join(", ")}]`} />
-                <DebugRow label="rawWpmHistory" value={`[${game.rawWpmHistory.join(", ")}]`} />
-                <DebugRow label="incorrectHistory" value={`[${game.incorrectHistory.join(", ")}]`} />
-                <DebugRow label="burst mean" value={mean(game.burstWpm).toFixed(2)} />
-                <DebugRow label="burst stdDev" value={stdDev(game.burstWpm).toFixed(2)} />
-                <DebugRow
-                  label="burst CV"
-                  value={
-                    mean(game.burstWpm) === 0
-                      ? "—"
-                      : (stdDev(game.burstWpm) / mean(game.burstWpm)).toFixed(4)
-                  }
-                />
-              </>
-            )}
-          </div>
-        </div>
-      ) : null}
-
-      {SHOW_WORD_MISTAKES_PANEL && game.isGameEnded && game.wordMistakes.length > 0 && (
-        <div className="mt-4 p-3 rounded border border-border bg-muted/30 font-mono text-xs overflow-x-auto max-h-[60vh] overflow-y-auto">
-          <div className="font-semibold text-muted-foreground mb-2">
-            Word Mistakes ({game.wordMistakes.length})
-          </div>
-          <pre className="whitespace-pre-wrap wrap-break-word">
-            {JSON.stringify(game.wordMistakes, null, 2)}
-          </pre>
-        </div>
-      )}
 
     </div>
   );
@@ -873,10 +814,3 @@ function StatItem({
   );
 }
 
-function DebugRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div>
-      <span className="text-muted-foreground">{label}:</span> {value}
-    </div>
-  );
-}

@@ -19,10 +19,6 @@ const isPublicRoute = createRouteMatcher([
   '/about(.*)',
   '/pricing',
   '/pricing(.*)',
-  '/api/admin/seed-clerk-users',
-  '/api/admin/seed-clerk-users(.*)',
-  '/api/admin/sync-clerk-users-to-db',
-  '/api/admin/sync-clerk-users-to-db(.*)',
 ])
 
 export default clerkMiddleware(async (auth, req) => {

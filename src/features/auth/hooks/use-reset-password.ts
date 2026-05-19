@@ -77,7 +77,6 @@ export function useResetPassword() {
             session: result.createdSessionId,
             navigate: async ({ session }) => {
               if (session?.currentTask) {
-                console.log(session?.currentTask)
                 return
               }
               router.push(AUTH_ROUTES.HOME)

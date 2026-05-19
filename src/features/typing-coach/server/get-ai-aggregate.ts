@@ -671,7 +671,6 @@ export async function getTypingCoachAIAggregate(
 
     return TypingCoachAIAggregateSchema.parse(payload);
   } catch (err) {
-    console.error("getTypingCoachAIAggregate error:", err);
     return { error: String(err) };
   }
 }

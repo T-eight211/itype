@@ -16,8 +16,8 @@ export async function scheduleMaybeFirstTypingCoachRun(): Promise<void> {
   after(async () => {
     try {
       await executeCoachGenerationForUser(userId);
-    } catch (err) {
-      console.error("typing-coach executeCoachGenerationForUser failed:", err);
+    } catch {
+      
     }
   });
 }
