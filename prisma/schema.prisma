@@ -263,8 +263,12 @@ model WordErrorEvent {
 
 model LeaderboardAllTime60s {
   id               Int           @id @default(autoincrement())
+  // Leaderboard tables point to the saved TypingResults row instead of copying
+  // WPM, accuracy and date into another table.
   typing_result_id Int           @unique
   typing_result    TypingResults @relation(fields: [typing_result_id], references: [id], onDelete: Cascade)
+  // The user_id is unique here, so each user can only have one all-time 60s
+  // leaderboard entry: their best saved 60 second result.
   user_id          String        @unique
   user             User          @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
@@ -273,8 +277,10 @@ model LeaderboardAllTime60s {
 
 model LeaderboardAllTime15s {
   id               Int           @id @default(autoincrement())
+  // This stores the linked best TypingResults row for the all-time 15s board.
   typing_result_id Int           @unique
   typing_result    TypingResults @relation(fields: [typing_result_id], references: [id], onDelete: Cascade)
+  // Unique user_id keeps one all-time 15s leaderboard row per user.
   user_id          String        @unique
   user             User          @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
@@ -283,12 +289,16 @@ model LeaderboardAllTime15s {
 
 model LeaderboardDaily60s {
   id               Int           @id @default(autoincrement())
+  // Daily boards also store a reference to the result row, not duplicated score
+  // values.
   typing_result_id Int           @unique
   typing_result    TypingResults @relation(fields: [typing_result_id], references: [id], onDelete: Cascade)
   user_id          String
   user             User          @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  // Date-only field used for the UTC daily leaderboard reset.
   leaderboard_date DateTime      @db.Date
 
+  // One daily 60s entry is allowed per user per UTC date.
   @@unique([user_id, leaderboard_date])
   @@index([leaderboard_date])
   @@map("leaderboard_daily_60s")
@@ -296,12 +306,14 @@ model LeaderboardDaily60s {
 
 model LeaderboardDaily15s {
   id               Int           @id @default(autoincrement())
+  // Linked typing result for this user's best 15s result on this UTC date.
   typing_result_id Int           @unique
   typing_result    TypingResults @relation(fields: [typing_result_id], references: [id], onDelete: Cascade)
   user_id          String
   user             User          @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
   leaderboard_date DateTime      @db.Date
 
+  // One daily 15s entry is allowed per user per UTC date.
   @@unique([user_id, leaderboard_date])
   @@index([leaderboard_date])
   @@map("leaderboard_daily_15s")

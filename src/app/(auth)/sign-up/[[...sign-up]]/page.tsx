@@ -3,13 +3,17 @@
 import { SignupForm } from "@/features/auth/components/signup-form"
 import { useAuthRedirect } from "@/features/auth/hooks/use-auth-redirect"
 
+// Custom sign-up route backed by Clerk. The catch-all segment supports Clerk's
+// nested auth routing while keeping the project's own form UI.
 export default function SignupPage() {
   const { isLoaded, isSignedIn } = useAuthRedirect()
 
+  // If a session already exists, redirect away from the sign-up flow.
   if (!isLoaded || isSignedIn) {
     return null
   }
 
+  // `SignupForm` starts either email registration with OTP or Google OAuth.
   return (
     <div className="flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 pt-4 pb-6 md:pb-10">
       <div className="w-full max-w-sm md:max-w-4xl">

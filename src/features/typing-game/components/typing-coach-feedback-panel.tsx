@@ -28,6 +28,7 @@ type TypingCoachFeedbackPanelProps = {
 
 const STREAM_MS_PER_CHAR = 14;
 
+// Small loading placeholder used while feedback or eligibility data is loading.
 function HoverCardSkeleton() {
   return (
     <div className="space-y-2">
@@ -38,10 +39,14 @@ function HoverCardSkeleton() {
   );
 }
 
+// This is not real model token streaming. It reveals already-saved feedback text
+// one character at a time in the browser for a smoother popup effect.
 function StreamedFeedbackText({ text, muted = false }: { text: string; muted?: boolean }) {
+  // React state stores the part of the string currently visible.
   const [shown, setShown] = useState("");
 
   useEffect(() => {
+    // Reset and start a browser interval whenever the selected text changes.
     setShown("");
     if (!text) return;
     let i = 0;
@@ -65,6 +70,9 @@ function StreamedFeedbackText({ text, muted = false }: { text: string; muted?: b
   );
 }
 
+// Popup content for AI coaching. It decides what to show based on the feedback
+// API state: loading, error, pending generation, ready feedback or insufficient
+// data fallback.
 export function TypingCoachFeedbackPanel({
   feedback,
   selectedCoachItem,
@@ -94,6 +102,7 @@ export function TypingCoachFeedbackPanel({
     }
 
     if (selectedCoachItem) {
+      // The parent chooses one feedback item; this panel only displays it.
       return (
         <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
           {instantFeedbackText ? (

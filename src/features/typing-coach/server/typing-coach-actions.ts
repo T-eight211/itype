@@ -11,6 +11,8 @@ import { getTypingCoachAIEligibility, ROLLING_WINDOW_DAYS } from "./get-ai-aggre
 import { runTypingCoach } from "./run-typing-coach";
 
 function parsePracticeWordsJson(json: unknown): string[] {
+  // practice_words is stored as JSON. Validate it before returning it to the
+  // client, and fall back to an empty list if the stored value is not valid.
   const r = z.array(z.string()).safeParse(json);
   return r.success ? r.data : [];
 }
@@ -18,6 +20,7 @@ function parsePracticeWordsJson(json: unknown): string[] {
 export async function getTypingCoachEligibilityAction(
   windowDays: number = ROLLING_WINDOW_DAYS
 ) {
+  // Server action used by the UI toggle to ask whether AI coaching is available.
   return getTypingCoachAIEligibility(windowDays);
 }
 
@@ -33,9 +36,12 @@ export type TypingCoachFeedbackActionResult =
     };
 
 export async function getTypingCoachFeedbackAction(): Promise<TypingCoachFeedbackActionResult> {
+  // Feedback is user-specific, so read the current Clerk user first.
   const { userId } = await auth();
   if (!userId) return { error: "Not signed in" };
 
+  // If the latest run is still pending, return a pending state. The frontend can
+  // poll this action until generation completes.
   const pending = await prisma.typingCoachAiRun.findFirst({
     where: { user_id: userId, status: "pending" },
     orderBy: { created_at: "desc" },
@@ -46,6 +52,7 @@ export async function getTypingCoachFeedbackAction(): Promise<TypingCoachFeedbac
     return { status: "pending", run_id: pending.id };
   }
 
+  // Otherwise fetch the latest completed run that has saved feedback items.
   const run = await prisma.typingCoachAiRun.findFirst({
     where: {
       user_id: userId,
@@ -59,9 +66,11 @@ export async function getTypingCoachFeedbackAction(): Promise<TypingCoachFeedbac
   });
 
   if (!run) {
+    // No completed feedback exists yet.
     return { status: "none" };
   }
 
+  // Convert feedback database rows into the simple shape used by the UI.
   const items = run.feedbackItems.map((row) => ({
     feedback_text: row.feedback_text,
     practice_words: parsePracticeWordsJson(row.practice_words),
@@ -97,10 +106,13 @@ export type RunTypingCoachGenerateActionResult =
 export async function runTypingCoachGenerateAction(
   windowDays: number = ROLLING_WINDOW_DAYS
 ): Promise<RunTypingCoachGenerateActionResult> {
+  // Manual generation action. It maps the internal union result into a simpler
+  // action response shape for the client.
   const result = await runTypingCoach(windowDays);
 
   switch (result.kind) {
     case "ok":
+      // Successful run with saved feedback output.
       return {
         ok: true,
         run_id: result.run_id,
@@ -109,9 +121,11 @@ export async function runTypingCoachGenerateAction(
       };
 
     case "not_authenticated":
+      // No Clerk session.
       return { ok: false, error: result.error };
 
     case "not_ready": {
+      // User is signed in but does not meet the data thresholds.
       if (result.ready === false) {
         return {
           ok: false as const,
@@ -127,9 +141,11 @@ export async function runTypingCoachGenerateAction(
     }
 
     case "aggregate_error":
+      // Aggregation/validation failed before the model call.
       return { ok: false, error: result.error };
 
     case "generation_failed":
+      // Model call or output parsing failed after a pending run was created.
       return {
         ok: false,
         run_id: result.run_id,
@@ -138,6 +154,7 @@ export async function runTypingCoachGenerateAction(
       };
 
     default: {
+      // Exhaustive TypeScript check in case a new result kind is added later.
       const _exhaustive: never = result;
       return { ok: false, error: "Unhandled result" };
     }

@@ -4,6 +4,8 @@ export function smoothWithValueWindow(
   valueWindowSize: number,
   getter = (value: number): number => value,
 ): number[] {
+  // Smooth burst WPM by averaging nearby points, but only if their values are
+  // close enough. This reduces noisy spikes without hiding large real changes.
   const get = getter;
   const result = [];
 
@@ -19,7 +21,8 @@ export function smoothWithValueWindow(
     for (let j = from; j < to && j < arr.length; j += 1) {
       const neighborValue = get(arr[j] as number);
 
-      
+      // valueWindowSize prevents a very high or low neighbouring point from
+      // pulling the current value too far.
       if (Math.abs(neighborValue - currentValue) <= valueWindowSize) {
         sum += neighborValue;
         count += 1;

@@ -14,10 +14,16 @@ import {
 import { Input } from "@/components/ui/input"
 import { useForgotPassword } from "../hooks/use-forgot-password"
 
+// First password-recovery screen. It asks Clerk to send a reset code to the
+// supplied email address.
 export function ForgotPasswordForm({ className, ...props }: React.ComponentProps<"div">) {
+  // Controlled email input value.
   const [email, setEmail] = useState("")
+  // Hook starts the Clerk reset-password flow and exposes loading/error state.
   const { isLoaded, isLoading, error, sendResetCode, clearError } = useForgotPassword()
 
+  // Sends the reset code and moves to `/reset-password` if Clerk accepts the
+  // email address.
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     await sendResetCode(email)

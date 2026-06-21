@@ -8,8 +8,10 @@ import { TypingTextDisplay } from "./typing-text-display";
 export type WordWrapGateFn = (nextInput: string) => boolean;
 
 /**
- * Invisible mirror of the typing line layout. Exposes a synchronous gate that returns true when
- * appending a character would move the active `whitespace-nowrap` word to a lower line (Monkeytype-style wrap clamp).
+ * Invisible mirror of the typing line layout. Exposes a synchronous gate that
+ * returns true when appending a character would move the active word to a lower
+ * line. The main input handler uses this to block typing that would overflow the
+ * current visible line.
  */
 export function WordWrapProbe({
   gateRef,
@@ -24,6 +26,8 @@ export function WordWrapProbe({
   isGameEnded: boolean;
   isInputFocused: boolean;
 }) {
+  // `useRef` points to the invisible DOM mirror. `useState` temporarily swaps in
+  // a proposed input so the browser can measure where the active word would be.
   const containerRef = useRef<HTMLDivElement>(null);
   const [probeInput, setProbeInput] = useState<string | null>(null);
 
@@ -42,6 +46,8 @@ export function WordWrapProbe({
       };
 
       const measureTop = (input: string) => {
+        // `flushSync` forces React to render the probe input immediately so the
+        // next DOM measurement reads the updated layout.
         flushSync(() => {
           setProbeInput(input);
         });
@@ -56,6 +62,8 @@ export function WordWrapProbe({
       });
 
       if (before == null || after == null) return false;
+      // If the active word's top position moved down, the next character would
+      // wrap the word to a new line.
       return after > before + 0.5;
     };
 

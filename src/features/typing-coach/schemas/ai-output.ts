@@ -8,6 +8,7 @@ const MAX_WEAKNESSES = 8;
 
 const PRACTICE_WORD_REGEX = /^[a-z]+(?:'[a-z]+)*$/;
 
+// Stored practice words must be simple prompt-safe tokens.
 const practiceWordStoredSchema = z
   .string()
   .min(1)
@@ -21,6 +22,8 @@ const practiceWordStoredSchema = z
   });
 
 function normalizePracticeToken(raw: string): string | null {
+  // Clean model-generated practice words before saving. Invalid tokens are
+  // dropped instead of being stored.
   const trimmed = raw.trim().toLowerCase();
   const w = trimmed.replace(/[^a-z']/g, "");
   if (w.length === 0) return null;
@@ -29,6 +32,7 @@ function normalizePracticeToken(raw: string): string | null {
 }
 
 export const TypingCoachAIOutputSchema = z.object({
+  // Final stored output shape. This is the safe version after normalisation.
   items: z
     .array(
       z.object({
@@ -47,6 +51,8 @@ export type TypingCoachAIOutput = z.infer<typeof TypingCoachAIOutputSchema>;
 
 const typingCoachItemGenerateSchema = z
   .object({
+    // Schema used directly with generateObject(). It is stricter and more
+    // descriptive because it guides the model output.
     feedback: z
       .string()
       .min(80)
@@ -109,6 +115,7 @@ export const TypingCoachAIGenerateSchema = z
 export type TypingCoachAIGenerate = z.infer<typeof TypingCoachAIGenerateSchema>;
 
 function normalizeItemWords(raw: string[]): string[] {
+  // Normalise, deduplicate and cap practice words for one feedback item.
   const words: string[] = [];
   const seen = new Set<string>();
   for (const r of raw) {
@@ -122,12 +129,15 @@ function normalizeItemWords(raw: string[]): string[] {
 }
 
 export function generatedToStoredOutput(gen: TypingCoachAIGenerate): TypingCoachAIOutput {
+  // Convert the raw generated schema into the smaller stored schema.
   const items: TypingCoachAIOutput["items"] = [];
 
   for (const block of gen.items) {
+    // Trim feedback and skip empty blocks.
     const feedback = block.feedback.trim();
     if (feedback.length < 1) continue;
 
+    // Clean practice words and skip blocks that have no usable practice tokens.
     const practice_words = normalizeItemWords(block.practice_words);
     if (practice_words.length < 1) continue;
 
@@ -135,9 +145,12 @@ export function generatedToStoredOutput(gen: TypingCoachAIGenerate): TypingCoach
   }
 
   if (items.length === 0) {
+    // If all generated items were invalid, fail the run instead of saving empty
+    // feedback.
     throw new Error("No valid coaching items after normalisation");
   }
 
+  // Final parse guarantees the returned object matches the database/UI shape.
   return TypingCoachAIOutputSchema.parse({ items });
 }
 
@@ -145,6 +158,8 @@ export function pairFeedbackWithPracticeWords(output: TypingCoachAIOutput): {
   feedback: string;
   practice_words: string[];
 }[] {
+  // Convenience helper that keeps feedback text paired with its own practice
+  // word list.
   return output.items.map((row) => ({
     feedback: row.feedback,
     practice_words: row.practice_words,
@@ -152,11 +167,13 @@ export function pairFeedbackWithPracticeWords(output: TypingCoachAIOutput): {
 }
 
 export function flattenCoachPracticeWords(output: TypingCoachAIOutput): string[] {
+  // Merge all item practice words into one deduplicated list.
   return [...new Set(output.items.flatMap((i) => i.practice_words))];
 }
 
 export function flattenCoachItemsPracticeWords(
   items: { practice_words: string[] }[]
 ): string[] {
+  // Same flattening helper for already-loaded database feedback items.
   return [...new Set(items.flatMap((i) => i.practice_words))];
 }

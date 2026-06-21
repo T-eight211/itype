@@ -5,6 +5,8 @@ import {
   PositionInWordSchema,
 } from "@/features/typing-game/schemas/word-error-event";
 
+// These Zod schemas describe the structured telemetry JSON prepared for the AI
+// coach. The server validates the aggregate before it is inserted into a prompt.
 export const PositionBucketCountsSchema = z
   .object({
     start_count: z
@@ -317,6 +319,8 @@ export const TypingCoachAIWordAggregateSchema = z
   .describe("Per-target-word aggregate payload used by typing coach AI.");
 
 export const TypingCoachAITopWordSchema = TypingCoachAIWordAggregateSchema.extend({
+  // Temporary ranking value used by aggregation to choose the hardest words.
+  // It is not needed by the LLM-facing `words` list.
   difficulty_score: z
     .number()
     .describe(
@@ -326,6 +330,8 @@ export const TypingCoachAITopWordSchema = TypingCoachAIWordAggregateSchema.exten
 
 export const TypingCoachAIAggregateSchema = z
   .object({
+    // Full aggregate object built from word_mistakes and word_error_events.
+    // This is structured data, not raw keystroke text.
     user_id: z
       .string()
       .min(1)
@@ -392,6 +398,7 @@ export const TypingCoachAIAggregateSchema = z
 
 export const TypingCoachAIInputSchema = z
   .object({
+    // Top-level wrapper passed into prompt building and model generation.
     aggregate: TypingCoachAIAggregateSchema.describe("Structured aggregated telemetry input."),
   })
   .describe("Top-level payload sent to the typing coach AI prompt builder.")

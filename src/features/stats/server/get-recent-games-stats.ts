@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 const TIME_PRESETS = [15, 30, 60, 90] as const;
 const WORD_PRESETS = [10, 25, 50, 100] as const;
 
+// One card value for a time or word preset. Null values mean the user has not
+// completed that preset yet.
 type RecentPresetStat = {
   preset: number;
   wpm: number | null;
@@ -18,6 +20,7 @@ export type RecentGamesStats = {
 };
 
 function emptyPresetStat(preset: number): RecentPresetStat {
+  // Placeholder used when there is no saved result for a preset.
   return {
     preset,
     wpm: null,
@@ -41,6 +44,8 @@ function mapLatestByPreset(
   }>,
   presetKey: "target_time_seconds" | "target_word_count"
 ): RecentPresetStat[] {
+  // Map stores the newest row found for each preset. The query is already sorted
+  // newest first, so the first time a preset appears it is the latest result.
   const latest = new Map<number, RecentPresetStat>();
 
   for (const row of rows) {
@@ -57,17 +62,24 @@ function mapLatestByPreset(
     });
   }
 
+  // Return results in fixed preset order. Missing presets get placeholders so
+  // the UI always renders the same cards.
   return presets.map((preset) => latest.get(preset) ?? emptyPresetStat(preset));
 }
 
 export async function getRecentGamesStats(userId: string): Promise<RecentGamesStats> {
+  // Time-mode and word-mode recent preset queries are independent, so run them
+  // together.
   const [timeRows, wordRows] = await Promise.all([
     prisma.typingResults.findMany({
       where: {
+        // Only fetch this user's completed time games for supported time presets.
         user_id: userId,
         game_mode: "time",
         target_time_seconds: { in: [...TIME_PRESETS] },
       },
+      // Newest rows come first, so mapLatestByPreset can keep the first row per
+      // preset.
       orderBy: [{ ended_at: "desc" }, { id: "desc" }],
       select: {
         target_time_seconds: true,
@@ -80,6 +92,7 @@ export async function getRecentGamesStats(userId: string): Promise<RecentGamesSt
     }),
     prisma.typingResults.findMany({
       where: {
+        // Same query shape for word-count presets.
         user_id: userId,
         game_mode: "words",
         target_word_count: { in: [...WORD_PRESETS] },

@@ -19,15 +19,22 @@ import {
 } from "@/components/ui/input-otp"
 import { useOTPVerification } from "../hooks/use-otp-verification"
 
+// OTP UI rendered by `/otp`. It is used only after email sign-up has created a
+// pending Clerk sign-up and sent an email code.
 export function OTPForm({ className, ...props }: React.ComponentProps<"div">) {
+  // Controlled value for the six-digit OTP input.
   const [code, setCode] = useState("")
+  // Hook verifies the code, resends codes, and redirects invalid sign-up states
+  // back to `/sign-up`.
   const { isLoaded, isLoading, error, verifyCode, resendCode } = useOTPVerification()
 
+  // Completes email verification for the pending Clerk sign-up.
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     await verifyCode(code)
   }
 
+  // Requests a fresh email code from Clerk and clears the old input.
   const handleResend = async () => {
     const success = await resendCode()
     if (success) {

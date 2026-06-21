@@ -44,11 +44,16 @@ type FeedbackApiState =
   | { status: "error" };
 
 const COACH_POPOVER_AUTO_CLOSE_MS = 10000;
-const SHOW_DEBUG_PANEL = false;
-const SHOW_WORD_MISTAKES_PANEL = false;
+const SHOW_DEBUG_PANEL = true;
+const SHOW_WORD_MISTAKES_PANEL = true;
 
+// Main visible typing game screen. This component owns UI controls and layout,
+// while `useTypingGame()` owns the game engine state and behaviour.
 export function TypingGame({ urlMode = null }: TypingGameProps) {
+  // Load the user's keymap settings and keyboard layout for the optional visual
+  // keyboard shown below the prompt.
   const keymap = useTypingGameKeymap();
+  // Refs store mutable browser-only values without causing re-renders.
   const wordWrapGateRef = useRef<WordWrapGateFn | null>(null);
   const streamedCoachFeedbackKeysRef = useRef<Set<string>>(new Set());
   const promptStreamIntervalRef = useRef<number | null>(null);
@@ -76,18 +81,22 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     | { status: "error" }
   >({ status: "idle" });
 
+  // The hook returns all game state, metric values and browser event handlers.
   const game = useTypingGame(urlMode, {
     wordWrapGateRef,
     coachMode,
     coachPracticeWords: coachWords,
   });
 
+  // AI coach mode uses generated practice words, so quote mode is disabled while
+  // coaching is active.
   useEffect(() => {
     if (coachMode && game.mode === "quote") {
       game.setMode("words");
     }
   }, [coachMode, game.mode, game.setMode]);
 
+  // Turning coach mode off clears the selected feedback item and practice pool.
   useEffect(() => {
     if (!coachMode) {
       coachAppliedRunIdRef.current = null;
@@ -96,6 +105,8 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     }
   }, [coachMode]);
 
+  // When feedback is ready, choose one feedback item and use its practice words
+  // as the word pool for the next generated prompt.
   useEffect(() => {
     if (!coachMode) return;
     if (feedbackState?.status !== "ready") return;
@@ -114,6 +125,8 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     setCoachWords(items[idx]!.practice_words);
   }, [coachMode, feedbackState]);
 
+  // When the user toggles AI coaching on, fetch eligibility and latest feedback
+  // in parallel. `Promise.all` lets both server actions run at the same time.
   useEffect(() => {
     if (!coachMode) return;
     let isCancelled = false;
@@ -156,6 +169,8 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     };
   }, [coachMode]);
 
+  // If an AI run is still pending, poll the server until the saved feedback is
+  // ready.
   useEffect(() => {
     if (!coachMode || feedbackState?.status !== "pending") return;
     const id = window.setInterval(async () => {
@@ -166,6 +181,7 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     return () => clearInterval(id);
   }, [coachMode, feedbackState?.status]);
 
+  // User-facing message for the coach popup when feedback is not ready.
   const aiHintMessage = useMemo(() => {
     if (eligibilityState.status === "idle") return "";
     if (eligibilityState.status === "loading") return "Checking AI readiness...";
@@ -180,6 +196,7 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     return "You have enough sessions, but we need more error data before AI coaching can run.";
   }, [eligibilityState]);
 
+  // Normalises nullable feedback state into a shape the panel can render.
   const feedbackPanelPayload = useMemo(() => {
     if (feedbackState === null || feedbackState.status === "loading") {
       return { status: "loading" as const };
@@ -190,16 +207,21 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     return feedbackState;
   }, [feedbackState]);
 
+  // The currently selected AI feedback item. This can be null while loading.
   const coachDisplayItem = useMemo(() => {
     if (feedbackState?.status !== "ready" || coachFocusIndex === null) return null;
     return feedbackState.items[coachFocusIndex] ?? null;
   }, [feedbackState, coachFocusIndex]);
+
+  // Unique key used to know whether a feedback item has already streamed once.
   const selectedCoachFeedbackKey = useMemo(() => {
     if (!coachMode) return null;
     if (feedbackState?.status !== "ready" || coachFocusIndex === null) return null;
     return `${feedbackState.run_id}:${coachFocusIndex}`;
   }, [coachMode, feedbackState, coachFocusIndex]);
 
+  // Debug text for development only. It is hidden unless SHOW_DEBUG_PANEL is set
+  // to true.
   const coachDebugInfo = useMemo(() => {
     if (feedbackState?.status !== "ready" || coachFocusIndex === null || !coachDisplayItem) {
       return "";
@@ -207,6 +229,7 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     return `run=${feedbackState.run_id} item=${coachFocusIndex + 1}/${feedbackState.items.length} pool=${coachWords.length} mix=0.9 words=[${coachWords.join(", ")}]`;
   }, [feedbackState, coachFocusIndex, coachDisplayItem, coachWords]);
 
+  // Fallback text when there is no saved feedback yet.
   const noneFallbackText = useMemo(() => {
     if (feedbackState?.status !== "none") return "";
     if (eligibilityState.status === "unauthenticated") {
@@ -219,12 +242,15 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     return aiHintMessage;
   }, [feedbackState, eligibilityState, aiHintMessage]);
 
+  // Controls whether the coach panel should show eligibility guidance instead of
+  // feedback text.
   const showEligibilityFallback = useMemo(() => {
     if (feedbackState?.status === "none") return true;
     if (eligibilityState.status === "unauthenticated") return true;
     return false;
   }, [feedbackState, eligibilityState.status]);
 
+  // Changing this key restarts the feedback text reveal animation.
   const coachPanelStreamResetKey = useMemo(
     () =>
       feedbackState?.status === "ready"
@@ -233,6 +259,7 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     [feedbackState, coachFocusIndex]
   );
 
+  // Changes when the visible popover content should be reopened/restreamed.
   const feedbackPopoverKey = useMemo(() => {
     if (!coachMode) return "";
     if (feedbackState === null) return "null";
@@ -246,6 +273,7 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     return "unknown";
   }, [coachMode, feedbackState, coachFocusIndex, eligibilityState.status]);
 
+  // Clears the auto-close timer for the coach popover.
   const clearCoachPopoverTimer = useCallback(() => {
     if (coachPopoverTimerRef.current) {
       clearTimeout(coachPopoverTimerRef.current);
@@ -256,6 +284,8 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
   const coachPanelStreamResetKeyRef = useRef(coachPanelStreamResetKey);
   coachPanelStreamResetKeyRef.current = coachPanelStreamResetKey;
 
+  // Auto-closes the coach popup after a short delay so it does not permanently
+  // cover the typing area.
   const scheduleCoachPopoverClose = useCallback(() => {
     clearCoachPopoverTimer();
     coachPopoverHoverLockRef.current = true;
@@ -270,6 +300,8 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     }, COACH_POPOVER_AUTO_CLOSE_MS);
   }, [clearCoachPopoverTimer]);
 
+  // Open the coach popover whenever coach mode/content changes, then schedule it
+  // to close automatically.
   useEffect(() => {
     if (!coachMode) {
       clearCoachPopoverTimer();
@@ -282,10 +314,13 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     scheduleCoachPopoverClose();
   }, [coachMode, feedbackPopoverKey, clearCoachPopoverTimer, scheduleCoachPopoverClose]);
 
+  // Cleanup for the popover timer when this component unmounts.
   useEffect(() => {
     return () => clearCoachPopoverTimer();
   }, [clearCoachPopoverTimer]);
 
+  // Chooses another AI feedback item and refreshes the practice words before
+  // starting another test in coach mode.
   const regenerateCoachAndGame = useCallback(async () => {
     if (!coachMode) return;
     setCoachRegenLoading(true);
@@ -314,22 +349,27 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     }
   }, [coachMode, coachFocusIndex]);
 
+  // Restart button handler. In coach mode it can also rotate the coach exercise.
   const handleRestartTest = useCallback(async () => {
     if (coachMode) await regenerateCoachAndGame();
     game.restartTest();
   }, [coachMode, regenerateCoachAndGame, game.restartTest]);
 
+  // Next button handler. In coach mode it can also rotate the coach exercise.
   const handleNextTest = useCallback(async () => {
     if (coachMode) await regenerateCoachAndGame();
     game.nextTest();
   }, [coachMode, regenerateCoachAndGame, game.nextTest]);
 
+  // DOM measurement refs used by the custom line scrolling hook.
   const { measureRef, wrapContainerRef, scrollContainerRef } = useLineMeasurement({
     measureStr: game.measureStr,
     cursorCellIndex: game.alignment.cursorCellIndex,
     settingsKey: game.settingsKey,
   });
 
+  // While coach data is loading, the prompt area shows a skeleton/streaming state
+  // instead of accepting typing input.
   const coachExercisePending = useMemo(() => {
     if (!coachMode) return false;
     if (game.mode === "quote") return true;
@@ -344,6 +384,7 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
   const isPromptLoading =
     coachRegenLoading || coachExercisePending || game.displayText.length === 0;
 
+  // Cleanup for the prompt text streaming interval.
   useEffect(() => {
     return () => {
       if (promptStreamIntervalRef.current !== null) {
@@ -352,6 +393,8 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
     };
   }, []);
 
+  // Reveals a new AI-coach prompt a few characters at a time. This is a browser
+  // interval animation, not model streaming.
   useEffect(() => {
     if (promptStreamIntervalRef.current !== null) {
       window.clearInterval(promptStreamIntervalRef.current);
@@ -600,10 +643,14 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
           className="relative w-full min-h-18 select-none cursor-default"
           dir="ltr"
           onMouseDown={(e) => {
+            // Clicking the visual text area focuses the hidden textarea, because
+            // the visible text is rendered manually and is not itself editable.
             e.preventDefault();
             game.focusTypingInput();
           }}
         >
+          {/* Invisible plain text copy used only for measuring cursor position and
+              line wrapping. The user never sees this element. */}
           <div
             ref={measureRef}
             className={cn(
@@ -616,6 +663,8 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
             {game.measureStr}
           </div>
 
+          {/* Invisible React-rendered copy used to predict if the next character
+              would push the active word onto a new line. */}
           <WordWrapProbe
             gateRef={wordWrapGateRef}
             displayText={game.displayText}
@@ -626,6 +675,9 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
 
           <style>{`.typing-game-scroll-hide{scrollbar-width:none;-ms-overflow-style:none}.typing-game-scroll-hide::-webkit-scrollbar{display:none}`}</style>
 
+          {/* Visible typing display. It is not an input field; it renders
+              character-level alignment so correct, wrong, extra and untyped
+              characters can have different colours. */}
           <div
             ref={scrollContainerRef}
             className={cn(
@@ -668,6 +720,9 @@ export function TypingGame({ urlMode = null }: TypingGameProps) {
             </div>
           </div>
 
+          {/* Hidden textarea that captures real keyboard input. Paste/copy/cut are
+              blocked, selection is forced to the end, and React state controls
+              the value through `game.rawInput`. */}
           <textarea
             ref={game.textareaRef}
             value={game.rawInput}

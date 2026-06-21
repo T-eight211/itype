@@ -6,17 +6,22 @@ interface UseLineMeasurementParams {
   settingsKey: string;
 }
 
+// Measures the invisible text layout and scrolls the visible typing area when
+// the cursor moves down to the lower line. This uses browser DOM APIs because
+// React state alone does not know where text wrapped on screen.
 export function useLineMeasurement({
   measureStr,
   cursorCellIndex,
   settingsKey,
 }: UseLineMeasurementParams) {
+  // Refs point to DOM elements without causing re-renders when they change.
   const measureRef = useRef<HTMLDivElement>(null);
   const wrapContainerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const previousCursorTopRef = useRef<number | null>(null);
   const previousCursorIndexRef = useRef<number>(-1);
 
+  // Uses `document.createRange()` to measure each character's screen position.
   const runMeasure = useCallback(() => {
     const measureEl = measureRef.current;
     if (!measureEl || !measureStr) return null;
@@ -37,6 +42,8 @@ export function useLineMeasurement({
     return indices;
   }, [measureStr]);
 
+  // Re-measure when the container size changes, because responsive width changes
+  // can make text wrap at different positions.
   useLayoutEffect(() => {
     const containerEl = wrapContainerRef.current;
     if (!containerEl || !measureStr) return;
@@ -48,6 +55,7 @@ export function useLineMeasurement({
     return () => ro.disconnect();
   }, [measureStr, runMeasure]);
 
+  // Reset scroll position when a new test/settings combination is loaded.
   useLayoutEffect(() => {
     const el = scrollContainerRef.current;
     if (el) el.scrollTop = 0;
@@ -55,6 +63,8 @@ export function useLineMeasurement({
     previousCursorIndexRef.current = -1;
   }, [settingsKey]);
 
+  // Scroll the visible text area only when the cursor moves forward and down
+  // onto/past the bottom visible line.
   useLayoutEffect(() => {
     const measureEl = measureRef.current;
     const scrollEl = scrollContainerRef.current;

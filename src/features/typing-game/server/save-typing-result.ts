@@ -1,4 +1,6 @@
 "use server";
+// This file is a server action module. Code here runs on the backend, so it can
+// safely use Clerk server auth and Prisma database access.
 
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
@@ -27,6 +29,8 @@ export type SaveTypingResultInput = {
 };
 
 export async function saveTypingResult(input: SaveTypingResultInput) {
+  // Clerk auth identifies the signed-in user on the server. Results are only
+  // saved when a user is authenticated.
   const { userId } = await auth();
   if (!userId) return { error: "Not signed in" };
 
@@ -52,14 +56,19 @@ export async function saveTypingResult(input: SaveTypingResultInput) {
   } = input;
 
   try {
+    // A transaction keeps the user row, typing result and leaderboard updates
+    // consistent. If one write fails, the database rolls the group back.
     const resultId = await prisma.$transaction(async (tx) => {
       const endedAt = new Date();
+      // Ensure the local user row exists before linking a result to it.
       await tx.user.upsert({
         where: { user_id: userId },
         create: { user_id: userId },
         update: {},
       });
 
+      // Store the completed game session and its history arrays for the result
+      // page and statistics dashboard.
       const result = await tx.typingResults.create({
         data: {
           user_id: userId,
@@ -88,6 +97,9 @@ export async function saveTypingResult(input: SaveTypingResultInput) {
 
       const newWpm = result.wpm ?? wpm;
 
+      // Leaderboards store the best eligible 15s/60s time-mode result.
+      // The leaderboard row links back to this new TypingResults id if it beats
+      // the user's previous best for that board.
       await upsertAllTimeLeaderboardsForResult(tx, {
         clerkUserId: userId,
         typingResultId: result.id,
@@ -96,6 +108,9 @@ export async function saveTypingResult(input: SaveTypingResultInput) {
         targetTimeSeconds,
       });
 
+      // Daily leaderboards use the UTC date from the completed result.
+      // This is in the same transaction as the result save, so the leaderboard
+      // cannot update without the matching TypingResults row existing.
       await upsertDailyLeaderboardsForResult(tx, {
         clerkUserId: userId,
         typingResultId: result.id,

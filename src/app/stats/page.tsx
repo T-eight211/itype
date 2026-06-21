@@ -18,10 +18,20 @@ export const metadata: Metadata = {
 };
 
 export default async function StatsPage() {
+  // This page is a Next.js server component. It runs on the server, so it can
+  // safely read the current Clerk session before rendering the dashboard.
   const { userId } = await auth();
+  // Promise.all runs these independent async queries at the same time. This is
+  // faster than waiting for profile, then leaderboard, then recent games, etc.
   const [profile, leaderboard, recentGames, dailyActivity, statsGraphGames] = await Promise.all([
+    // Profile data requires auth inside getStatsProfile(), because the stats
+    // dashboard is only meaningful for a signed-in user.
     getStatsProfile(),
+    // The leaderboard snapshot is optional. Guests get null because there is no
+    // signed-in user to rank.
     userId ? getViewerLeaderboardSnapshot("all_time_15s", userId) : Promise.resolve(null),
+    // If there is no userId, return empty client-safe objects instead of running
+    // database queries.
     userId ? getRecentGamesStats(userId) : Promise.resolve({ time: [], words: [] }),
     userId ? getDailyActivity(userId) : Promise.resolve([]),
     userId ? getStatsResultsGraphData(userId, DEFAULT_STATS_GRAPH_FILTERS) : Promise.resolve([]),

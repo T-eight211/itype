@@ -42,6 +42,7 @@ import { StatsWpmTestHistogram } from "@/features/stats/components/number-of-tes
 import type { StatsGameGraphPoint } from "@/features/stats/server/get-stats-results-graph-data";
 
 const chartConfig = {
+  // shadcn ChartContainer reads these labels and CSS colours for chart series.
   wpm: { label: "Speed", color: "var(--chart-1)" },
   accuracy: { label: "Accuracy", color: "var(--chart-2)" },
   avg10Wpm: { label: "Avg of 10", color: "var(--chart-3)" },
@@ -51,6 +52,8 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 type ChartRow = {
+  // ChartRow is derived from a saved game and adds rolling average fields used
+  // only by this chart.
   idx: number;
   wpm: number | null;
   rawWpm: number | null;
@@ -69,6 +72,8 @@ type ChartRow = {
 };
 
 function rollingMean(values: (number | null)[], windowSize: number): (number | null)[] {
+  // Rolling mean calculates an average ending at each game. For a 10-game
+  // window, game 12 averages games 3-12.
   const out: (number | null)[] = [];
   for (let i = 0; i < values.length; i++) {
     const start = Math.max(0, i - (windowSize - 1));
@@ -127,6 +132,7 @@ function formatStatsGraphGameMode(row: ChartRow): string {
 }
 
 function WpmDot(props: unknown) {
+  // Custom Recharts scatter shape for WPM points.
   const { cx, cy, payload } = props as { cx?: number; cy?: number; payload?: ChartRow };
   if (cx == null || cy == null || !payload || payload.wpm == null || !Number.isFinite(payload.wpm)) {
     return <g />;
@@ -144,6 +150,7 @@ function WpmDot(props: unknown) {
 }
 
 function AccTriangle(props: unknown) {
+  // Custom Recharts scatter shape for accuracy points.
   const { cx, cy, payload } = props as { cx?: number; cy?: number; payload?: ChartRow };
   if (cx == null || cy == null || !payload || payload.accuracy == null || !Number.isFinite(payload.accuracy)) {
     return <g />;
@@ -160,6 +167,8 @@ function AccTriangle(props: unknown) {
 }
 
 function StatsGraphTooltip(props: TooltipProps<number, string>) {
+  // Tooltip receives the hovered chart payload from Recharts and formats the
+  // saved game metrics into a compact popup.
   const { active, payload } = props;
   if (!active || !payload?.length) return null;
 
@@ -219,6 +228,8 @@ function buildPolylinePoints(
   xScale: (v: number) => number,
   yScale: (v: number) => number
 ): string | null {
+  // Convert rolling average values into SVG polyline coordinates. Recharts gives
+  // scale functions that translate data values into pixel positions.
   const pts: string[] = [];
   for (const row of rows) {
     const v = row[valueKey];
@@ -232,6 +243,8 @@ function buildPolylinePoints(
 }
 
 function firstXAxis(xAxisMap: AxisScaleState["xAxisMap"]) {
+  // Recharts stores axis scales in a map. This helper returns the first x-axis
+  // scale so custom polylines can align with the chart.
   if (!xAxisMap) return undefined;
   return xAxisMap[0] ?? Object.values(xAxisMap)[0];
 }
@@ -252,6 +265,8 @@ function MovingAveragePolylines({
   showAvg100Wpm: boolean;
   showAvg100Accuracy: boolean;
 }) {
+  // This component draws moving averages manually as SVG polylines on top of the
+  // Recharts scatter plot.
   const yMap = chartProps.yAxisMap;
   const xAxis = firstXAxis(chartProps.xAxisMap);
   const yWpm = yMap?.wpm;
@@ -323,21 +338,28 @@ export function StatsResultsGraph({
   userId: string | null;
   initialGames: StatsGameGraphPoint[];
 }) {
+  // React state stores current filters and chart toggles. Updating any setter
+  // causes this client component to re-render.
   const [filters, setFilters] = React.useState<StatsGraphFilters>(DEFAULT_STATS_GRAPH_FILTERS);
   const [games, setGames] = React.useState<StatsGameGraphPoint[]>(initialGames);
   const [showWpmPoints, setShowWpmPoints] = React.useState(true);
   const [showAccuracyPoints, setShowAccuracyPoints] = React.useState(true);
   const [showAvg10, setShowAvg10] = React.useState(true);
   const [showAvg100, setShowAvg100] = React.useState(true);
+  // useTransition marks filter refetches as non-urgent so the UI stays
+  // responsive while the server action returns.
   const [pending, startTransition] = React.useTransition();
+  // Refs store mutable flags without triggering re-renders.
   const hydratedRef = React.useRef(false);
   const initialHadRowsRef = React.useRef(initialGames.length > 0);
 
   React.useEffect(() => {
+    // Keep local chart state in sync if the server-provided initial games change.
     setGames(initialGames);
   }, [initialGames]);
 
   React.useEffect(() => {
+    // When filters change, call the server action to fetch matching games.
     if (!userId) return;
     if (!hydratedRef.current) {
       hydratedRef.current = true;
@@ -354,6 +376,8 @@ export function StatsResultsGraph({
   }, [filters, userId]);
 
   const chartRows = React.useMemo((): ChartRow[] => {
+    // Build arrays for WPM and accuracy, then calculate rolling averages for
+    // each point on the chart.
     const wpmSeries = games.map((g) => g.wpm);
     const accSeries = games.map((g) => g.accuracy);
     const avg10Wpm = rollingMean(wpmSeries, 10);
@@ -380,12 +404,15 @@ export function StatsResultsGraph({
     }));
   }, [games]);
 
+  // Moving average lines are only shown when both the average toggle and the
+  // corresponding metric toggle are enabled.
   const showAvg10Wpm = showAvg10 && showWpmPoints;
   const showAvg10Accuracy = showAvg10 && showAccuracyPoints;
   const showAvg100Wpm = showAvg100 && showWpmPoints;
   const showAvg100Accuracy = showAvg100 && showAccuracyPoints;
 
   const { yWpmMax, yAccMin } = React.useMemo(() => {
+    // Calculate chart axis bounds from the series currently visible.
     const wpmVals: number[] = [];
     const accVals: number[] = [];
     for (const r of chartRows) {
@@ -419,18 +446,21 @@ export function StatsResultsGraph({
   ]);
 
   const wpmAxisTicks = React.useMemo(() => {
+    // Build WPM tick marks in steps of 10.
     const ticks: number[] = [];
     for (let v = 0; v <= yWpmMax; v += 10) ticks.push(v);
     return ticks;
   }, [yWpmMax]);
 
   const accAxisTicks = React.useMemo(() => {
+    // Build accuracy tick marks in steps of 10.
     const ticks: number[] = [];
     for (let v = yAccMin; v <= 100; v += 10) ticks.push(v);
     return ticks;
   }, [yAccMin]);
 
   if (!userId) {
+    // Guest state: there is no saved typing history to chart.
     return (
       <Card className="py-4 sm:py-0">
         <CardHeader>
@@ -449,6 +479,7 @@ export function StatsResultsGraph({
         <CardDescription>These filters apply to all stats charts below.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 px-6 py-4">
+        {/* Filter controls update React state. The effect above then refetches filtered games. */}
         <div className="space-y-2">
           <Label className="text-xs text-muted-foreground">Range</Label>
           <ToggleGroup
@@ -684,8 +715,11 @@ export function StatsResultsGraph({
 
       <CardContent className="px-2 sm:p-6">
         {chartRows.length === 0 ? (
+          // Empty state when the current filters match no saved games.
           <p className="py-8 text-center text-sm text-muted-foreground">No games match these filters.</p>
         ) : (
+          // Recharts renders WPM and accuracy as scatter points with optional
+          // moving-average overlays.
           <ChartContainer config={chartConfig} className="aspect-auto h-[300px] w-full">
             <ComposedChart data={chartRows} margin={{ left: 14, right: 26, top: 18, bottom: 14 }}>
               <CartesianGrid vertical={false} />

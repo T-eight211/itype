@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "IType - AI Based Typing Game",
+  title: "Itype - AI Based Typing Game",
   description: "",
 };
 

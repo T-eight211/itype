@@ -29,6 +29,8 @@ export type GenerateTypingCoachOutputResult = {
 export async function generateTypingCoachOutput(
   rawInput: unknown
 ): Promise<GenerateTypingCoachOutputResult> {
+  // Validate the aggregate input before building a prompt. This catches bad
+  // server data before it reaches the model call.
   const parsedInput = TypingCoachAIInputSchema.safeParse(rawInput);
   if (!parsedInput.success) {
     throw new TypingCoachInputError(
@@ -37,10 +39,13 @@ export async function generateTypingCoachOutput(
     );
   }
 
+  // Turn the validated aggregate into the system/user prompt messages.
   const { system, user } = buildTypingCoachPrompt(parsedInput.data);
 
   let modelResult;
   try {
+    // generateObject asks the model for structured JSON and checks it against
+    // TypingCoachAIGenerateSchema during generation.
     modelResult = await generateObject({
       model: typingCoachModel,
       schema: TypingCoachAIGenerateSchema,
@@ -49,12 +54,16 @@ export async function generateTypingCoachOutput(
       ...TYPING_COACH_GENERATION_PARAMS,
     });
   } catch (err) {
+    // Model/API failures are wrapped in a typed error so callers can store a
+    // useful failure code.
     throw new TypingCoachModelError(
       `Typing coach model call failed: ${(err as Error)?.message ?? String(err)}`,
       { cause: err }
     );
   }
 
+  // Validate the raw object returned by the AI SDK. This is a second guard before
+  // normalising the output for storage.
   const genParse = TypingCoachAIGenerateSchema.safeParse(modelResult.object);
   if (!genParse.success) {
     throw new TypingCoachOutputParseError(
@@ -68,6 +77,8 @@ export async function generateTypingCoachOutput(
 
   let output: TypingCoachAIOutput;
   try {
+    // Normalise practice words and remove invalid/empty generated items before
+    // saving anything to the database.
     output = generatedToStoredOutput(genParse.data);
   } catch (err) {
     throw new TypingCoachOutputParseError(
@@ -79,6 +90,7 @@ export async function generateTypingCoachOutput(
     );
   }
 
+  // Final validation checks the stored output shape after normalisation.
   const finalParse = TypingCoachAIOutputSchema.safeParse(output);
   if (!finalParse.success) {
     throw new TypingCoachOutputParseError(
@@ -90,6 +102,7 @@ export async function generateTypingCoachOutput(
     );
   }
 
+  // Return both the safe output and the model ID used for this run.
   return {
     output: finalParse.data,
     model_id: TYPING_COACH_MODEL_ID,

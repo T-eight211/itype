@@ -44,6 +44,8 @@ function formatDisplayName(user: {
   lastName: string | null;
   primaryEmailAddress?: { emailAddress: string } | null;
 }) {
+  // Prefer username because the app is a game and usernames are used as player
+  // display names. If it is missing, fall back to name, then email prefix.
   if (user.username && user.username.trim().length > 0) return user.username.trim();
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
   if (fullName.length > 0) return fullName;
@@ -53,6 +55,7 @@ function formatDisplayName(user: {
 }
 
 function formatElapsed(totalSeconds: number) {
+  // Convert total seconds from the database into HH:MM:SS for the profile card.
   const safeSeconds = Math.max(0, Math.round(totalSeconds));
   const hours = Math.floor(safeSeconds / 3600);
   const minutes = Math.floor((safeSeconds % 3600) / 60);
@@ -86,6 +89,8 @@ function topBadgeForCategory(
   category: BadgeCategory,
   earnedBadgeKeys: Set<BadgeKey>,
 ): StatsTopBadge | null {
+  // Filter to badges the user owns in this category, then sort by badge order so
+  // the highest badge in that category is displayed.
   const ranked = BADGES.filter(
     (badge) => badge.category === category && earnedBadgeKeys.has(badge.key),
   ).sort(
@@ -108,15 +113,22 @@ function topBadgeForCategory(
 }
 
 export async function getStatsProfile(): Promise<StatsProfile> {
+  // Clerk auth identifies which user's stats should be loaded. Without a
+  // signed-in user, this server helper should not return profile data.
   const { userId } = await auth();
   if (!userId) {
     throw new Error("Authenticated user is required");
   }
 
   const client = await clerkClient();
+  // These four reads are independent, so Promise.all runs them together. Prisma
+  // aggregate calculates count and sum in the database instead of loading every
+  // typing result into JavaScript.
   const [user, typingSummary, xp, userBadges] = await Promise.all([
+    // Clerk stores external identity fields such as username and profile image.
     client.users.getUser(userId),
     prisma.typingResults.aggregate({
+      // All stats are scoped by user_id so users only see their own history.
       where: { user_id: userId },
       _count: { id: true },
       _sum: { elapsed_seconds: true },
@@ -132,12 +144,16 @@ export async function getStatsProfile(): Promise<StatsProfile> {
   ]);
 
   const totalXp = xp?.total_xp ?? 0;
+  // Convert total XP into level and progress values for the profile card.
   const progress = xpProgressToNextLevel(totalXp);
+  // Set gives fast membership checks when choosing each user's top badge.
   const earnedBadgeKeys = new Set<BadgeKey>(
     userBadges
       .map((b) => b.badge_key)
       .filter((key): key is BadgeKey => BADGE_BY_KEY.has(key as BadgeKey)),
   );
+  // Build one badge slot per category. If the user has no badge in a category,
+  // that slot is returned as null.
   const topBadgesByCategory = BADGE_CATEGORIES.map((category) => ({
     category,
     badge: topBadgeForCategory(category, earnedBadgeKeys),

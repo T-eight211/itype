@@ -1,4 +1,7 @@
 "use server";
+// Server action for saving detailed word-level analytics after a completed game.
+// It runs on the backend so validation and database writes are not exposed to
+// the browser.
 
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
@@ -6,9 +9,13 @@ import type { Prisma } from "@/generated/prisma/client";
 import { WordMistakeBatchSchema } from "../schemas/word-mistake";
 
 export async function saveWordMistakes(raw: unknown) {
+  // Use the Clerk user id to make sure mistakes are only saved for the current
+  // user's own typing result.
   const { userId } = await auth();
   if (!userId) return { error: "Not signed in" };
 
+  // Zod validates the incoming payload before Prisma writes it to the database.
+  // This protects the database shape even though the data came from the client.
   const parsed = WordMistakeBatchSchema.safeParse(raw);
   if (!parsed.success) {
     console.error("saveWordMistakes validation error:", parsed.error.flatten());
@@ -19,6 +26,7 @@ export async function saveWordMistakes(raw: unknown) {
 
   try {
     await prisma.$transaction(async (tx) => {
+      // Ownership check: the typing_result_id must belong to the signed-in user.
       const result = await tx.typingResults.findFirst({
         where: { id: typing_result_id, user_id: userId },
         select: { id: true },
@@ -29,6 +37,8 @@ export async function saveWordMistakes(raw: unknown) {
       }
 
       for (const wm of word_mistakes) {
+        // Save the word summary first. The generated word_id is then used by
+        // child error events.
         const createdMistake = await tx.wordMistake.create({
           data: {
             typing_result_id,
@@ -54,6 +64,8 @@ export async function saveWordMistakes(raw: unknown) {
         });
 
         if (wm.word_error_events.length > 0) {
+          // createMany stores all character-level events for the word in one
+          // batch query, including substitutions, omissions, insertions and pauses.
           await tx.wordErrorEvent.createMany({
             data: wm.word_error_events.map((ev) => ({
               word_mistake_id: createdMistake.word_id,

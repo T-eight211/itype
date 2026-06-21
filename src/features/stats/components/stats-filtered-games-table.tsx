@@ -17,11 +17,13 @@ import type { StatsGameGraphPoint } from "@/features/stats/server/get-stats-resu
 const PAGE_SIZE = 25;
 
 function formatNumber(value: number | null, suffix = ""): string {
+  // Display null or invalid metrics as a dash instead of showing broken values.
   if (value == null || !Number.isFinite(value)) return "—";
   return `${value.toFixed(2)}${suffix}`;
 }
 
 function formatMode(row: StatsGameGraphPoint): string {
+  // Convert stored mode fields into a short readable label for the table.
   if (row.gameMode === "time" && row.targetTimeSeconds != null) return `time ${row.targetTimeSeconds}`;
   if (row.gameMode === "words" && row.targetWordCount != null) return `words ${row.targetWordCount}`;
   if (row.gameMode === "quote") return row.quoteLength ? `quote ${row.quoteLength}` : "quote";
@@ -29,12 +31,14 @@ function formatMode(row: StatsGameGraphPoint): string {
 }
 
 function formatDate(iso: string): string {
+  // Convert ISO timestamp into a UK-style date label.
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 function formatTime(iso: string): string {
+  // Display only hour and minute for compact table rows.
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
@@ -45,17 +49,22 @@ type Props = {
 };
 
 export function StatsFilteredGamesTable({ games }: Props) {
+  // React state controls how many filtered rows are currently visible.
   const [visibleCount, setVisibleCount] = React.useState(PAGE_SIZE);
 
+  // Sort newest first for the table. useMemo avoids resorting unless the games
+  // array changes.
   const rows = React.useMemo(
     () => [...games].sort((a, b) => new Date(b.endedAt).getTime() - new Date(a.endedAt).getTime()),
     [games]
   );
 
   React.useEffect(() => {
+    // When filters change, reset the table back to the first page of rows.
     setVisibleCount(PAGE_SIZE);
   }, [games]);
 
+  // Slice is used for simple client-side pagination.
   const visibleRows = rows.slice(0, visibleCount);
   const hasMore = visibleCount < rows.length;
 
@@ -67,6 +76,7 @@ export function StatsFilteredGamesTable({ games }: Props) {
       </CardHeader>
       <CardContent className="px-2 sm:p-6">
         {rows.length === 0 ? (
+          // Empty state when no saved games match the selected filters.
           <p className="py-8 text-center text-sm text-muted-foreground">No games for these filters.</p>
         ) : (
           <>
@@ -109,4 +119,3 @@ export function StatsFilteredGamesTable({ games }: Props) {
     </Card>
   );
 }
-

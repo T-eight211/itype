@@ -11,10 +11,11 @@ const HAND_W = 280;
 
 const HAND_H = 165;
 
-
+// The overlay uses simple SVG geometry. KEY_STEP_PX converts keyboard-grid
+// movement into screen pixels so fingers can move towards the active key.
 const KEY_STEP_PX = 58;
 
-
+// X positions for the four fingers within one hand SVG.
 const FINGER_X: Record<"pinky" | "ring" | "middle" | "index", number> = {
   pinky: 24,
   ring: 82,
@@ -49,7 +50,8 @@ const HOME_ROW_TOP_WITH_NUMBER = HOME_ROW_TOP_NO_NUMBER + 48 + 10;
 const LEFT_HAND_LEFT = 52;
 const RIGHT_HAND_LEFT = 342;
 
-
+// Home row positions are the resting coordinates for each finger. Finger
+// movement is calculated as active key position minus this home position.
 const HOME_POS: Record<"left" | "right", Record<Finger, { x: number; y: number }>> = {
   left: {
     pinky: { x: 0.5, y: 1 },
@@ -81,6 +83,8 @@ function FingerGroup({
 }) {
   const cx = FINGER_X[finger];
   const top = FINGER_TOP_Y[finger];
+  // SVG transform moves only the active finger. This is a visual aid and does
+  // not affect the actual typing input.
   const transform =
     active && delta != null && (delta.dx !== 0 || delta.dy !== 0)
       ? `translate(${delta.dx} ${delta.dy})`
@@ -119,7 +123,8 @@ function ThumbGroup({
   active: boolean;
   delta: Delta | null;
 }) {
-
+  // The thumb is drawn separately because the space key can be typed by either
+  // hand and the thumb shape is different from the other fingers.
   const transform =
     active && delta != null && (delta.dx !== 0 || delta.dy !== 0)
       ? `translate(${delta.dx} ${delta.dy})`
@@ -161,7 +166,8 @@ function HandSvg({
 
   fingerDelta: Delta | null;
 }) {
-
+  // The right hand SVG is mirrored, so horizontal movement is inverted to keep
+  // the finger moving towards the same keyboard column visually.
   const svgDelta: Delta | null =
     fingerDelta != null
       ? { dx: side === "right" ? -fingerDelta.dx : fingerDelta.dx, dy: fingerDelta.dy }
@@ -223,6 +229,8 @@ function deltaForActiveFinger(
   info: QwertyFingerInfo
 ): Delta {
   const home = HOME_POS[side][info.finger];
+  // QWERTY metadata stores key positions as grid coordinates. This converts the
+  // difference from home row position into SVG translation pixels.
   return {
     dx: (info.x - home.x) * KEY_STEP_PX,
     dy: (info.y - home.y) * KEY_STEP_PX,
@@ -230,8 +238,10 @@ function deltaForActiveFinger(
 }
 
 export function TypingGameHandsOverlay({ activeChar, showNumberRow, className }: Props) {
+  // Look up which hand and finger should type the next expected character.
   const info = lookupQwertyFinger(activeChar);
 
+  // Space is marked as "both" hands, so both thumbs can be highlighted.
   const isThumbBoth = info?.finger === "thumb" && info.hand === "both";
   const leftActive: Finger | null = isThumbBoth
     ? "thumb"
@@ -249,6 +259,8 @@ export function TypingGameHandsOverlay({ activeChar, showNumberRow, className }:
   const rightDelta: Delta | null =
     info && rightActive != null ? deltaForActiveFinger("right", info) : null;
 
+  // The hands are positioned lower when the number row is visible because the
+  // keyboard itself becomes taller.
   const homeRowTop = showNumberRow ? HOME_ROW_TOP_WITH_NUMBER : HOME_ROW_TOP_NO_NUMBER;
 
   return (

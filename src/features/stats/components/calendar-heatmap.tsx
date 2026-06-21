@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 
 const DAY_SIZE = "16px";
 const DAY_MARGIN = "2px";
+// Activity count is converted into one of these colour classes.
 const heatmapClassNames = {
   zero: "bg-gray-100",
   one: "bg-red-200",
@@ -63,7 +64,9 @@ const weekdayLabels = ["", "Mon", "", "Wed", "", "Fri", ""];
 export default function CalendarHeatmap({
   data,
 }: CalendarHeatmapProps): React.JSX.Element {
+  // React state stores which date range the user selected in the dropdown.
   const [range, setRange] = React.useState<HeatmapRange>("last-12-months");
+  // buildHeatmap converts raw date/count rows into fixed calendar cells.
   const { days, monthLabels, weekCount } = buildHeatmap(data, range);
 
   return (
@@ -157,6 +160,7 @@ export default function CalendarHeatmap({
 }
 
 function HeatmapLegend(): React.JSX.Element {
+  // Legend explains that darker squares mean more completed typing sessions.
   return (
     <div className="flex space-x-2 text-sm text-gray-600">
       <span>less</span>
@@ -198,6 +202,7 @@ function HeatmapLegend(): React.JSX.Element {
 }
 
 function HeatmapCell({ day }: { day: HeatmapDay }): React.JSX.Element {
+  // Null count means this is only a filler cell used to complete the grid shape.
   if (day.count === null) {
     return (
       <div
@@ -225,10 +230,12 @@ function HeatmapCell({ day }: { day: HeatmapDay }): React.JSX.Element {
 }
 
 function buildHeatmap(data: CalendarHeatmapData[], range: HeatmapRange) {
+  // Build a Monday-start calendar grid for the selected range.
   const today = startOfDay(new Date());
   const rangeStart = getRangeStart(range, today);
   const rangeEnd = getRangeEnd(range);
   const start = startOfWeek(rangeStart);
+  // Map lets each generated date cell quickly look up its activity count.
   const dataByDay = new Map(
     data.map((item) => [dateKey(item.date), item.count])
   );
@@ -239,6 +246,7 @@ function buildHeatmap(data: CalendarHeatmapData[], range: HeatmapRange) {
     date <= rangeEnd;
     date.setDate(date.getDate() + 1)
   ) {
+    // Generate one HeatmapDay object for every date shown in the grid.
     const currentDate = new Date(date);
     const key = dateKey(currentDate);
     days.push({
@@ -253,6 +261,7 @@ function buildHeatmap(data: CalendarHeatmapData[], range: HeatmapRange) {
 
   const weekCount = Math.ceil(days.length / 7);
 
+  // Add blank cells after the range so the last week still has seven rows.
   while (days.length < weekCount * 7) {
     const lastDate = days[days.length - 1].date;
     const nextDate = new Date(lastDate);
@@ -298,6 +307,7 @@ function getMonthLabels(
   labelEnd: Date,
   skipFirstLabel = false
 ): MonthLabel[] {
+  // Month labels are positioned by week column so they line up with the grid.
   const labels: MonthLabel[] = [];
   let previousMonth = -1;
   let skippedFirstLabel = false;
@@ -329,6 +339,7 @@ function getMonthLabels(
 }
 
 function getHeatmapClassName(count: number) {
+  // Simple bucket mapping: 0, 1, 2, 3, and 4+ completed sessions.
   if (count === 1) {
     return heatmapClassNames.one;
   }
@@ -349,6 +360,7 @@ function getHeatmapClassName(count: number) {
 }
 
 function startOfWeek(date: Date) {
+  // Move the date back to Monday so the heatmap weeks start consistently.
   const nextDate = startOfDay(date);
   const dayOffset = (nextDate.getDay() + 6) % 7;
   nextDate.setDate(nextDate.getDate() - dayOffset);
@@ -356,12 +368,14 @@ function startOfWeek(date: Date) {
 }
 
 function startOfDay(date: Date) {
+  // Remove the time portion from a Date.
   const nextDate = new Date(date);
   nextDate.setHours(0, 0, 0, 0);
   return nextDate;
 }
 
 function dateKey(date: Date) {
+  // Stable key format used both by SQL results and heatmap cells.
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const day = `${date.getDate()}`.padStart(2, "0");

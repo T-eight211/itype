@@ -1,3 +1,6 @@
+// Client-side email validation used before Clerk is called in the forgot
+// password flow. Clerk still performs server-side validation; this improves the
+// user experience by showing a local error immediately.
 export function validateEmail(email: string): string | null {
   if (!email.trim()) {
     return "Please enter your email address"
@@ -11,6 +14,8 @@ export function validateEmail(email: string): string | null {
   return null
 }
 
+// Basic password validation shared by reset-password helpers. Email sign-up
+// relies mainly on Clerk's configured password rules instead.
 export function validatePassword(password: string): string | null {
   if (!password.trim()) {
     return "Please enter a password"
@@ -23,6 +28,8 @@ export function validatePassword(password: string): string | null {
   return null
 }
 
+// Extra reset-password rule requiring at least one special character. This
+// mirrors the stricter password requirement configured in Clerk.
 export function validatePasswordWithSpecialChars(password: string): string | null {
   const basicError = validatePassword(password)
   if (basicError) return basicError
@@ -35,6 +42,8 @@ export function validatePasswordWithSpecialChars(password: string): string | nul
   return null
 }
 
+// Ensures the confirmation field matches the new password before attempting the
+// Clerk reset request.
 export function validatePasswordMatch(password: string, confirmPassword: string): string | null {
   if (password !== confirmPassword) {
     return "Passwords do not match"
@@ -42,6 +51,7 @@ export function validatePasswordMatch(password: string, confirmPassword: string)
   return null
 }
 
+// OTP and password-reset email codes are expected to be six digits.
 export function validateCode(code: string): string | null {
   if (code.length !== 6) {
     return "Please enter a 6-digit code"
@@ -49,6 +59,8 @@ export function validateCode(code: string): string | null {
   return null
 }
 
+// Detects common browser/network failures separately from Clerk validation
+// errors so the UI can show a connection-specific message.
 export function isNetworkError(err: any): boolean {
   return err.message?.includes("Failed to fetch") || err.message?.includes("NetworkError")
 }

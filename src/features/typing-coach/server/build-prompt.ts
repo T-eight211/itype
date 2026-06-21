@@ -5,6 +5,9 @@ import type { TypingCoachAIAggregate, TypingCoachAIInput } from "../schemas/ai-a
 export function aggregateJsonForPrompt(
   aggregate: TypingCoachAIAggregate
 ): Omit<TypingCoachAIAggregate, "top_words" | "top_error_patterns"> {
+  // The run snapshot stores the full aggregate, but the prompt only needs the
+  // selected `words` payload. Removing these duplicate helper lists keeps the
+  // prompt smaller and avoids sending the same information twice.
   const rest: Partial<TypingCoachAIAggregate> = { ...aggregate };
   delete rest.top_words;
   delete rest.top_error_patterns;
@@ -39,6 +42,8 @@ export type TypingCoachPromptMessages = {
 };
 
 export function buildTypingCoachPrompt(input: TypingCoachAIInput): TypingCoachPromptMessages {
+  // The user prompt contains instructions plus a JSON string of the prepared
+  // aggregate. This gives the model structured evidence instead of raw keystrokes.
   const user = `AGGREGATE_JSON summarises recent typing performance for this user.
 
 How to interpret it:
@@ -53,5 +58,7 @@ Return JSON with "items": [ ... ]. Each item must have "feedback" (2–3 sentenc
 AGGREGATE_JSON:
 ${JSON.stringify(aggregateJsonForPrompt(input.aggregate))}`;
 
+  // The AI SDK receives a system message for behaviour rules and a user message
+  // containing the actual telemetry payload.
   return { system: SYSTEM_PROMPT, user };
 }

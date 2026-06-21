@@ -21,6 +21,8 @@ const TRI: StatsGraphTriBool[] = ["off", "on", "both"];
 const MODE_SET = new Set<StatsGraphGameMode>(["time", "words", "quote"]);
 
 function coerceModes(raw: unknown): StatsGraphGameMode[] {
+  // Coercion protects the server action from unsafe or malformed client input.
+  // Only known mode strings are allowed through.
   if (!Array.isArray(raw)) return [];
   const out: StatsGraphGameMode[] = [];
   for (const x of raw) {
@@ -32,6 +34,8 @@ function coerceModes(raw: unknown): StatsGraphGameMode[] {
 }
 
 function coerceNumberSubset(raw: unknown, allowed: readonly number[]): number[] {
+  // Convert values to numbers, keep only allowed presets, remove duplicates with
+  // Set, and fall back to all presets when the input is empty or invalid.
   if (!Array.isArray(raw)) return [...allowed];
   const set = new Set<number>();
   for (const x of raw) {
@@ -44,6 +48,8 @@ function coerceNumberSubset(raw: unknown, allowed: readonly number[]): number[] 
 }
 
 function coerceQuoteLengths(raw: unknown): string[] {
+  // Quote length filters are strings, so this checks against the allowed quote
+  // length list before passing data to Prisma.
   const allowed = new Set<string>(STATS_GRAPH_QUOTE_LENGTHS as unknown as string[]);
   if (!Array.isArray(raw)) return [...STATS_GRAPH_QUOTE_LENGTHS];
   const picked = raw.filter((s): s is string => typeof s === "string" && allowed.has(s));
@@ -51,6 +57,8 @@ function coerceQuoteLengths(raw: unknown): string[] {
 }
 
 function coerceFilters(raw: Partial<StatsGraphFilters> | undefined): StatsGraphFilters {
+  // Build a complete safe filter object. Invalid fields are replaced with
+  // DEFAULT_STATS_GRAPH_FILTERS or safe preset lists.
   if (!raw || typeof raw !== "object") return DEFAULT_STATS_GRAPH_FILTERS;
   return {
     range: RANGES.includes(raw.range as StatsGraphRange) ? (raw.range as StatsGraphRange) : DEFAULT_STATS_GRAPH_FILTERS.range,
@@ -70,6 +78,8 @@ function coerceFilters(raw: Partial<StatsGraphFilters> | undefined): StatsGraphF
 export async function loadStatsResultsGraphData(
   filters?: Partial<StatsGraphFilters>
 ): Promise<StatsGameGraphPoint[]> {
+  // Server action called by the client chart when filters change. It checks the
+  // signed-in user on the server before querying private stats.
   const { userId } = await auth();
   if (!userId) return [];
   return getStatsResultsGraphData(userId, coerceFilters(filters));

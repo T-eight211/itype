@@ -21,13 +21,19 @@ import {
 } from "@/components/ui/input-otp"
 import { useResetPassword } from "../hooks/use-reset-password"
 
+// Second password-recovery screen. It submits the email code and replacement
+// password to Clerk.
 export function ResetPasswordForm({ className, ...props }: React.ComponentProps<"div">) {
+  // Controlled values for reset-code and password inputs.
   const [code, setCode] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  // UI-only toggles for password visibility.
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
+  // Hook validates fields, calls Clerk's reset-password first-factor attempt and
+  // activates the resulting session when successful.
   const {
     isLoaded,
     isLoading,
@@ -41,6 +47,7 @@ export function ResetPasswordForm({ className, ...props }: React.ComponentProps<
     clearPasswordError,
   } = useResetPassword()
 
+  // Completes the reset flow through Clerk.
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     await resetPassword(code, password, confirmPassword)

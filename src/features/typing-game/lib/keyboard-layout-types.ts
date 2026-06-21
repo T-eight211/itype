@@ -1,7 +1,10 @@
 export type KeyboardLayoutKind = "ansi" | "iso";
 
+// A key tuple stores the possible characters for one physical key, usually the
+// normal character and its shifted character.
 export type KeyTuple = string[];
 
+// Shape of the keyboard layout JSON used by the visual keymap.
 export type KeyboardLayoutData = {
   keymapShowTopRow: boolean;
   type: KeyboardLayoutKind;
@@ -15,6 +18,8 @@ export type KeyboardLayoutData = {
 };
 
 export function isKeyboardLayoutData(value: unknown): value is KeyboardLayoutData {
+  // Runtime type guard. It checks unknown JSON before the app treats it as a
+  // keyboard layout.
   if (!value || typeof value !== "object") return false;
   const o = value as Record<string, unknown>;
   if (o.type !== "ansi" && o.type !== "iso") return false;

@@ -10,16 +10,23 @@ const VISIBLE_MS = 6000;
 const FADE_MS = 400;
 
 function formatSigned(value: number): string {
+  // Positive values are shown with + so XP gains are obvious.
   return value > 0 ? `+${value}` : `${value}`;
 }
 
 export function XpAwardedFlyout({ className }: { className?: string }) {
+  // award stores the latest XP result to display. Null means the flyout is not
+  // mounted.
   const [award, setAward] = React.useState<AwardXpSuccess | null>(null);
+  // visible controls fade-in/fade-out CSS classes.
   const [visible, setVisible] = React.useState(false);
+  // Timer refs store timeout ids without causing re-renders.
   const hideTimerRef = React.useRef<number | null>(null);
   const unmountTimerRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
+    // Subscribe to the browser XP event. When XP is awarded, show the flyout,
+    // then fade it out and remove it after the timers finish.
     return subscribeXpAwarded((next) => {
       if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
       if (unmountTimerRef.current) window.clearTimeout(unmountTimerRef.current);
@@ -34,6 +41,7 @@ export function XpAwardedFlyout({ className }: { className?: string }) {
   }, []);
 
   React.useEffect(() => {
+    // Cleanup timers if the component unmounts before the timeout finishes.
     return () => {
       if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
       if (unmountTimerRef.current) window.clearTimeout(unmountTimerRef.current);
@@ -42,6 +50,7 @@ export function XpAwardedFlyout({ className }: { className?: string }) {
 
   if (!award) return null;
 
+  // breakdown contains the total XP and the line-by-line contributions.
   const { breakdown } = award;
 
   return (
@@ -67,6 +76,7 @@ export function XpAwardedFlyout({ className }: { className?: string }) {
         {formatSigned(breakdown.total)}
       </div>
       <div className="flex flex-col items-end gap-0.5">
+        {/* Render every contribution line, such as time typing, streak or daily bonus. */}
         {breakdown.contributions.map((c) => (
           <div key={c.id} className="flex items-center gap-2">
             <span className="text-muted-foreground">{c.label}</span>

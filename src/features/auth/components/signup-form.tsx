@@ -19,15 +19,21 @@ import {
 import { Input } from "@/components/ui/input"
 import { useSignup } from "../hooks/use-signup"
 
+// Custom sign-up UI rendered by the `/sign-up` route. Clerk logic is kept in
+// `useSignup()` so this component mainly controls inputs and displays errors.
 export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  // Controlled inputs for the required game username, email and password.
   const [usernameValue, setUsernameValue] = useState("")
   const [emailValue, setEmailValue] = useState("")
   const [passwordValue, setPasswordValue] = useState("")
+  // UI-only toggle for password visibility.
   const [showPassword, setShowPassword] = useState(false)
 
+  // Hook values include Clerk readiness, loading state, mapped field errors and
+  // handlers for email sign-up and Google OAuth sign-up.
   const {
     isLoaded,
     isLoading,
@@ -37,6 +43,8 @@ export function SignupForm({
     handleEmailSignup,
   } = useSignup()
 
+  // Prevents the browser's default form post and starts the custom Clerk email
+  // sign-up flow. The hook redirects to `/otp` after Clerk sends the email code.
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     await handleEmailSignup(usernameValue, emailValue, passwordValue)

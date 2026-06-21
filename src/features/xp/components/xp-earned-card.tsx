@@ -9,11 +9,13 @@ type Props = {
 };
 
 function formatSigned(value: number): string {
+  // Keep the same +number display style as the XP flyout.
   if (value > 0) return `+${value}`;
   return `${value}`;
 }
 
 export function XpEarnedCard({ award, className }: Props) {
+  // The result page passes the completed XP award object into this card.
   const { breakdown } = award;
   return (
     <div
@@ -35,6 +37,7 @@ export function XpEarnedCard({ award, className }: Props) {
         {formatSigned(breakdown.total)}
       </div>
       <div className="mt-1 flex flex-col items-end gap-0.5">
+        {/* Display every contribution so the user can see how the total was built. */}
         {breakdown.contributions.map((c) => (
           <div key={c.id} className="flex items-center gap-3">
             <span className="text-muted-foreground">{c.label}</span>

@@ -20,9 +20,12 @@ const FILTER_TO_GROUP_INDEX: Record<Exclude<QuoteLengthFilter, "all">, number> =
 export async function getRandomQuoteFromLocal(
   length: QuoteLengthFilter
 ): Promise<QuoteResult> {
+  // Local quotes are imported on demand so the initial client bundle does not
+  // have to load the full quote file before quote mode is used.
   const data = (await import("@/data/quotes/english.json")) as EnglishQuotesData;
   let pool = data.quotes;
   if (length !== "all") {
+    // Quote length filters are stored as min/max groups inside the JSON data.
     const [minLen, maxLen] = data.groups[FILTER_TO_GROUP_INDEX[length]];
     pool = data.quotes.filter((q) => q.length >= minLen && q.length <= maxLen);
     if (pool.length === 0) pool = data.quotes;
@@ -37,6 +40,8 @@ export async function getRandomQuoteFromLocal(
 
 export async function fetchQuote(length: QuoteLengthFilter): Promise<QuoteResult> {
   try {
+    // Try the online quote API first, then fall back to the local quote dataset
+    // so quote mode still works if the network request fails.
     const url = buildQuotableRandomUrl(length);
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Failed to fetch quote: ${res.status}`);
@@ -57,6 +62,8 @@ export function buildQuotableRandomUrl(length: QuoteLengthFilter): string {
   const base = "https://api.quotable.io/random";
   const params = new URLSearchParams();
 
+  // Convert the selected quote length into the API query parameters expected by
+  // Quotable. "all" leaves the URL unfiltered.
   switch (length) {
     case "short":
       params.set("maxLength", "100");
@@ -80,4 +87,3 @@ export function buildQuotableRandomUrl(length: QuoteLengthFilter): string {
   const query = params.toString();
   return query ? `${base}?${query}` : base;
 }
-

@@ -13,6 +13,8 @@ type MetricKey = "wpm" | "rawWpm" | "accuracy" | "consistency";
 const MAX_NON_TIME_SESSION_SECONDS = 2 * 60 * 60;
 
 function saneElapsedSeconds(row: StatsGameGraphPoint): number {
+  // Use a safe elapsed time so one bad or very large saved value does not distort
+  // the total typing time summary.
   const elapsed = row.elapsedSeconds;
   if (elapsed == null || !Number.isFinite(elapsed) || elapsed <= 0) return 0;
   if (row.gameMode === "time" && row.targetTimeSeconds != null && row.targetTimeSeconds > 0) {
@@ -22,17 +24,21 @@ function saneElapsedSeconds(row: StatsGameGraphPoint): number {
 }
 
 function toMetricValues(games: StatsGameGraphPoint[], key: MetricKey): number[] {
+  // Extract one metric from every game and remove null or invalid values before
+  // calculating averages or maximums.
   return games
     .map((g) => g[key])
     .filter((v): v is number => v != null && Number.isFinite(v));
 }
 
 function mean(values: number[]): number | null {
+  // Mean average = sum of values divided by number of values.
   if (!values.length) return null;
   return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
 function formatHms(totalSeconds: number): string {
+  // Format seconds as HH:MM:SS for display.
   const safe = Math.max(0, Math.round(totalSeconds));
   const h = Math.floor(safe / 3600);
   const m = Math.floor((safe % 3600) / 60);
@@ -55,18 +61,24 @@ type Props = {
 };
 
 export function StatsFilteredSummaryCards({ games }: Props) {
+  // useMemo caches the calculated cards until the filtered games array changes.
+  // This avoids recalculating every summary on unrelated re-renders.
   const items = React.useMemo((): StatItem[] => {
     const wpmValues = toMetricValues(games, "wpm");
     const rawValues = toMetricValues(games, "rawWpm");
     const accValues = toMetricValues(games, "accuracy");
     const conValues = toMetricValues(games, "consistency");
 
+    // Last 10 summaries show recent performance within the currently filtered
+    // result set.
     const last10 = games.slice(-10);
     const wpmLast10 = toMetricValues(last10, "wpm");
     const rawLast10 = toMetricValues(last10, "rawWpm");
     const accLast10 = toMetricValues(last10, "accuracy");
     const conLast10 = toMetricValues(last10, "consistency");
 
+    // Total time typing is calculated locally from the filtered rows already
+    // loaded into the chart.
     const timeTypingSeconds = games.reduce((sum, g) => sum + saneElapsedSeconds(g), 0);
 
     return [
@@ -120,4 +132,3 @@ export function StatsFilteredSummaryCards({ games }: Props) {
     </div>
   );
 }
-

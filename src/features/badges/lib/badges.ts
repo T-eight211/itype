@@ -1,6 +1,7 @@
 import { BADGE_THRESHOLDS } from "./badge-thresholds";
 
 export type BadgeCategory =
+  // Categories are used by the UI to group and colour badges.
   | "speed"
   | "accuracy"
   | "streak"
@@ -9,12 +10,15 @@ export type BadgeCategory =
   | "special";
 
 export type BadgeDefinition = {
+  // Static badge metadata shown in profile, leaderboard and stats UI.
   key: string;
   name: string;
   description: string;
   category: BadgeCategory;
 };
 
+// Master list of all badges in the app. Threshold text is generated from
+// BADGE_THRESHOLDS so descriptions stay aligned with the evaluator.
 export const BADGES = [
   {
     key: "fast_fingers",
@@ -120,4 +124,5 @@ export const BADGES = [
   },
 ] as const satisfies readonly BadgeDefinition[];
 
+// BadgeKey is a TypeScript union of every badge key in BADGES.
 export type BadgeKey = (typeof BADGES)[number]["key"];

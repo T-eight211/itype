@@ -1,3 +1,5 @@
+// Central export file for typing-game schemas. Other modules import from here
+// instead of knowing the exact schema file path.
 export {
   KeyboardRowSchema,
   FingerSchema,

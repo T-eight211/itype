@@ -40,12 +40,14 @@ interface ServerManagementTableProps {
 }
 
 const BOARD_LABELS: Record<LeaderboardBoard, string> = {
+  // Human-readable labels for the four board ids returned by the server.
   all_time_60s: "All-time 60s",
   all_time_15s: "All-time 15s",
   daily_60s: "Daily 60s",
   daily_15s: "Daily 15s",
 };
 
+// The order used to render the board selector buttons.
 const BOARD_LIST: LeaderboardBoard[] = [
   "all_time_60s",
   "all_time_15s",
@@ -54,11 +56,13 @@ const BOARD_LIST: LeaderboardBoard[] = [
 ];
 
 function formatScore(value: number | null): string {
+  // Score fields can be null while data is missing, so show a safe placeholder.
   if (value == null || Number.isNaN(value)) return "--";
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
 
 function formatPercent(value: number | null): string {
+  // Accuracy is displayed as a percentage with two decimal places.
   if (value == null || Number.isNaN(value)) return "--";
   return `${value.toFixed(2)}%`;
 }
@@ -79,6 +83,8 @@ const SHORT_MONTHS = [
 ] as const;
 
 function formatLocalDateTime(value: string): string {
+  // Server sends ISO timestamps. The UI converts them into the user's local
+  // browser time for display.
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "--";
   const day = d.getDate();
@@ -90,6 +96,7 @@ function formatLocalDateTime(value: string): string {
 }
 
 function ordinalDay(n: number): string {
+  // Adds st/nd/rd/th for the UTC daily leaderboard date label.
   const mod100 = n % 100;
   if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
   const mod10 = n % 10;
@@ -100,6 +107,8 @@ function ordinalDay(n: number): string {
 }
 
 function formatUtcCalendarDateLabel(isoDate: string): string {
+  // Daily leaderboards reset by UTC date, so this label is forced to UTC rather
+  // than the user's local timezone.
   const [y, mo, d] = isoDate.split("-").map(Number);
   if (!y || !mo || !d) return isoDate;
   const dt = new Date(Date.UTC(y, mo - 1, d));
@@ -109,6 +118,7 @@ function formatUtcCalendarDateLabel(isoDate: string): string {
 }
 
 function msUntilNextUtcMidnight(): number {
+  // Calculate how many milliseconds are left before the next UTC daily reset.
   const now = Date.now();
   const d = new Date(now);
   const next = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1, 0, 0, 0, 0);
@@ -116,6 +126,7 @@ function msUntilNextUtcMidnight(): number {
 }
 
 function formatCountdown(ms: number): string {
+  // Convert milliseconds into HH:MM:SS for the daily reset timer.
   const totalSec = Math.floor(ms / 1000);
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
@@ -125,9 +136,13 @@ function formatCountdown(ms: number): string {
 }
 
 function DailyNextResetCountdown() {
+  // React state stores the live countdown value. Updating state every second
+  // causes this small component to re-render with the new time.
   const [msLeft, setMsLeft] = useState(0);
 
   useEffect(() => {
+    // useEffect starts the browser interval after the component appears and
+    // clears it when the component is removed.
     const tick = () => setMsLeft(msUntilNextUtcMidnight());
     tick();
     const id = setInterval(tick, 1000);
@@ -146,6 +161,7 @@ function DailyNextResetCountdown() {
 }
 
 function rankColor(rank: number): string {
+  // Top three ranks get distinct colours; all other ranks use muted text.
   if (rank == 1) return "text-yellow-400";
   if (rank == 2) return "text-slate-300";
   if (rank == 3) return "text-orange-300";
@@ -153,10 +169,12 @@ function rankColor(rank: number): string {
 }
 
 function avatarFallback(username: string): string {
+  // If Clerk has no profile image, show the first letter of the username.
   return username.trim().charAt(0).toUpperCase() || "?";
 }
 
 function formatTopPercentLabel(rank: number, total: number): string {
+  // Shows where the viewer sits compared with the full board.
   if (total <= 0) return "0";
   if (rank === 1) return "0";
   if (rank === total) return "100";
@@ -164,6 +182,7 @@ function formatTopPercentLabel(rank: number, total: number): string {
 }
 
 function badgeCategoryClassName(category: string) {
+  // Map badge categories to Tailwind colour classes for compact badge chips.
   switch (category) {
     case "speed":
       return "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300";
@@ -183,6 +202,8 @@ function badgeCategoryClassName(category: string) {
 }
 
 function ViewerCardIdentity({ viewer }: { viewer: LeaderboardViewerSnapshot }) {
+  // Small reusable identity block used in viewer states, especially when the
+  // user is outside the daily cutoff.
   return (
     <div className="flex items-center gap-4 min-w-0">
       {viewer.profileImageUrl ? (
@@ -214,22 +235,33 @@ export function ServerManagementTable({
   initialViewer,
   className = "",
 }: ServerManagementTableProps) {
+  // React state controls the active board, current page and rows currently shown
+  // on screen. Calling each setter re-renders this component with new data.
   const [activeBoard, setActiveBoard] = useState<LeaderboardBoard>(initialBoard);
   const [page, setPage] = useState(initialPage);
   const [rows, setRows] = useState(initialRows);
   const [total, setTotal] = useState(initialTotal);
+  // Daily metadata is only returned for daily boards.
   const [dailyCutoff, setDailyCutoff] = useState<DailyCutoffInfo | null>(null);
   const [dailyDateUtc, setDailyDateUtc] = useState<string | null>(null);
+  // viewer stores the signed-in user's rank snapshot for the selected board.
   const [viewer, setViewer] = useState<LeaderboardViewerSnapshot | null>(initialViewer);
   const [viewerLoading, setViewerLoading] = useState(false);
+  // selectedRow opens the detail overlay. Null means no overlay is open.
   const [selectedRow, setSelectedRow] = useState<LeaderboardRow | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  // useTransition marks board/page changes as non-urgent UI updates, allowing
+  // React to keep the interface responsive while the server action returns.
   const [pending, startTransition] = useTransition();
   const shouldReduceMotion = useReducedMotion();
+  // Refs keep mutable flags without causing a re-render. They prevent duplicate
+  // fetches for data already loaded by the server on the first page render.
   const skipInitialFetch = useRef(false);
   const skipViewerFetch = useRef(false);
 
   useEffect(() => {
+    // Refetch leaderboard rows whenever the user changes board or page. The
+    // first render is skipped because initialRows already came from the server.
     if (!skipInitialFetch.current) {
       skipInitialFetch.current = true;
       return;
@@ -246,6 +278,9 @@ export function ServerManagementTable({
   }, [activeBoard, page]);
 
   useEffect(() => {
+    // Refetch the signed-in user's placement when the selected board changes.
+    // This is separate from row fetching because the viewer may not be on the
+    // current visible page.
     if (!viewerUserId) return;
     if (skipViewerFetch.current) {
       skipViewerFetch.current = false;
@@ -260,6 +295,7 @@ export function ServerManagementTable({
 
   const totalPages = total > 0 ? Math.ceil(total / LEADERBOARD_PAGE_SIZE) : 1;
   const pageItems = getPaginationItems(page, totalPages);
+  // Daily boards show the UTC date and reset countdown. All-time boards do not.
   const isDaily = activeBoard === "daily_60s" || activeBoard === "daily_15s";
 
   return (
@@ -286,6 +322,7 @@ export function ServerManagementTable({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Board selector. Changing board resets to page 1 and clears any open row detail. */}
             {BOARD_LIST.map((board) => {
               const active = board == activeBoard;
               return (
@@ -314,6 +351,7 @@ export function ServerManagementTable({
 
         {viewerUserId ? (
           <div className="mb-6">
+            {/* Viewer placement area: loading, no qualifying entry, outside daily cutoff, or highlighted rank card. */}
             {viewerLoading ? (
               <p className="text-sm text-muted-foreground">Loading your placement…</p>
             ) : !viewer ? (
@@ -407,6 +445,7 @@ export function ServerManagementTable({
           initial="hidden"
           animate="visible"
         >
+          {/* Column header for the leaderboard rows. */}
           <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
             <div className="col-span-1">Rank</div>
             <div className="col-span-3">Name</div>
@@ -418,11 +457,14 @@ export function ServerManagementTable({
           </div>
 
           {rows.length == 0 ? (
+            // Empty state for a board with no saved qualifying scores.
             <div className="rounded-xl border border-border/40 bg-muted/40 p-6 text-center text-sm text-muted-foreground">
               No leaderboard entries yet.
             </div>
           ) : (
             rows.map((row) => {
+              // Highlight the signed-in user's row when it appears in the visible
+              // page results.
               const isYou =
                 Boolean(viewerUserId) && row.userId.trim() === viewerUserId.trim();
               return (
@@ -501,6 +543,7 @@ export function ServerManagementTable({
                         <div className="flex items-center gap-2">
                           <span className="text-foreground font-medium truncate">{row.username}</span>
                           {isYou ? (
+                            // Extra label makes the current user's own row easy to identify.
                             <span className="shrink-0 rounded-md border border-primary/50 bg-primary/25 px-2 py-0.5 text-xs font-semibold text-primary">
                               You
                             </span>
@@ -535,6 +578,8 @@ export function ServerManagementTable({
         </motion.div>
 
         {total > 0 && (
+          // Pagination changes React state, which triggers the useEffect above to
+          // request the next leaderboard page from the server action.
           <Pagination className="mt-8">
             <PaginationContent>
               <PaginationItem>
@@ -573,6 +618,8 @@ export function ServerManagementTable({
 
         <AnimatePresence>
           {selectedRow && (
+            // Clicking a row stores it in selectedRow and opens this overlay with
+            // more detail about the saved result.
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

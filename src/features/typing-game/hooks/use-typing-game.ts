@@ -48,6 +48,9 @@ export type QuoteLength = "all" | "short" | "medium" | "long" | "thicc";
 
 const REACT_KEYMAP_FLASH_MS = 220;
 
+// Focuses the hidden textarea on the next animation frame. This is a browser
+// API technique that waits until React has rendered the textarea before calling
+// `.focus()`.
 function scheduleTextareaFocus(
   textareaRef: RefObject<HTMLTextAreaElement | null>,
   setFocused: (value: boolean) => void
@@ -68,6 +71,8 @@ export type UseTypingGameOptions = {
 
 const DEFAULT_COACH_MIX = 0.7;
 
+// Main typing game engine hook. This is a client-side React hook because typing
+// needs live browser events, React state updates, and immediate visual feedback.
 export function useTypingGame(
   urlMode: GameMode | null = null,
   options: UseTypingGameOptions = {}
@@ -78,6 +83,9 @@ export function useTypingGame(
     coachPracticeWords = [],
     coachMixProbability = DEFAULT_COACH_MIX,
   } = options;
+
+  // `useState` stores values that should cause the UI to re-render when they
+  // change, such as selected mode, typed input, timer display and final metrics.
   const [mode, setMode] = useState<GameMode>(() => urlMode ?? "time");
   const [wordCount, setWordCount] = useState("25");
   const [timerDuration, setTimerDuration] = useState("30");
@@ -104,6 +112,10 @@ export function useTypingGame(
   const [isCapsLockOn, setIsCapsLockOn] = useState(false);
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [keymapReactFlashes, setKeymapReactFlashes] = useState<KeymapReactFlash[]>([]);
+
+  // `useRef` stores mutable values that should survive renders but should not
+  // cause a re-render by themselves. This is useful for timers, latest metric
+  // values, DOM elements and "already saved" flags.
   const keymapReactFlashIdRef = useRef(0);
   const keymapReactFlashTimeoutsRef = useRef<Map<number, number>>(new Map());
 
@@ -133,6 +145,8 @@ export function useTypingGame(
 
   const errorCollector = useErrorCollector();
 
+  // If the user leaves during a meaningful but unfinished run, store a small
+  // incomplete-run summary so XP can still account for effort later.
   const captureAbandonedRunIfAny = useCallback(() => {
     if (typeof window === "undefined") return;
     if (!startPerformanceTimeRef.current) return;
@@ -146,12 +160,15 @@ export function useTypingGame(
     appendIncompleteRun({ seconds, accuracy: acc });
   }, []);
 
+  // Clears temporary key highlights on the visual keyboard.
   const clearAllKeymapReactFlashes = useCallback(() => {
     keymapReactFlashTimeoutsRef.current.forEach((tid) => window.clearTimeout(tid));
     keymapReactFlashTimeoutsRef.current.clear();
     setKeymapReactFlashes([]);
   }, []);
 
+  // Cleanup effect. `useEffect` runs after render; returning a function tells
+  // React to run it when the component unmounts.
   useEffect(() => {
     return () => {
       keymapReactFlashTimeoutsRef.current.forEach((tid) => window.clearTimeout(tid));
@@ -159,6 +176,8 @@ export function useTypingGame(
     };
   }, []);
 
+  // Builds the word prompt. In AI coach mode, some words can come from the AI
+  // practice pool; otherwise normal random words are generated.
   const buildPromptWordBlock = useCallback(
     (count: number) => {
       if (
@@ -177,11 +196,14 @@ export function useTypingGame(
     [coachMode, coachPracticeWords, coachMixProbability, mode]
   );
 
+  // `useMemo` avoids recalculating alignment unless `displayText` or `rawInput`
+  // changes. Alignment is the main character-by-character comparison structure.
   const alignment = useMemo(
     () => computeAlignment(displayText, rawInput),
     [displayText, rawInput]
   );
 
+  // The next expected character is used by the "next key" keymap mode.
   const keymapNextExpectedChar = useMemo(() => {
     if (alignment.promptCursor >= displayText.length) return null;
     const ch = displayText[alignment.promptCursor];
@@ -189,11 +211,15 @@ export function useTypingGame(
     return ch ?? null;
   }, [displayText, alignment.promptCursor]);
 
+  // The checkpoint controls how far the user can backspace. Correct completed
+  // words become locked behind the checkpoint.
   const checkpointInputIndex = useMemo(
     () => computeCheckpointInputIndex(alignment, displayText, rawInput),
     [alignment, displayText, rawInput]
   );
 
+  // Derived progress value for the UI. This does not need its own state because
+  // it can be calculated from the current alignment and target text.
   const completedWordsCount = useMemo(() => {
     if (!displayText || !rawInput) return 0;
     const words = displayText.split(" ").filter(Boolean);
@@ -219,6 +245,9 @@ export function useTypingGame(
     [alignment, displayText]
   );
 
+  // Decides when the game is finished. Time mode finishes when the timer expires;
+  // word and quote modes finish when the prompt has been typed correctly enough
+  // to reach the end.
   const isGameEnded = useMemo(() => {
     const promptFinished =
       displayText.length > 0 &&
@@ -249,6 +278,7 @@ export function useTypingGame(
     timerDuration,
   ]);
 
+  // Shows countdown time in time mode and elapsed time in words/quote mode.
   const timeDisplaySeconds = useMemo(() => {
     if (!startTime) return 0;
     const currentSeconds = (Date.now() - startTime) / 1000;
@@ -260,6 +290,7 @@ export function useTypingGame(
     return currentSeconds;
   }, [mode, timerDuration, startTime, elapsedSeconds]);
 
+  // Raw WPM counts typed characters more directly, including incorrect effort.
   const rawWpm = useMemo(() => {
     const rawChars = computeRawChars(displayText, rawInput);
     return roundTo2(charsToWpm(rawChars, elapsedSeconds));
@@ -268,12 +299,15 @@ export function useTypingGame(
   const wpmDisplay = useMemo(() => formatWpm(wpm), [wpm]);
   const rawWpmDisplay = useMemo(() => formatWpm(rawWpm), [rawWpm]);
 
+  // Accuracy is based on tracked correct and incorrect keystrokes.
   const accuracy = useMemo(
     () => roundTo2(computeAccuracy(correctKeystrokes, incorrectKeystrokes)),
     [correctKeystrokes, incorrectKeystrokes]
   );
   const accuracyDisplay = useMemo(() => formatWpm(accuracy), [accuracy]);
 
+  // `measureStr` is rendered invisibly by the UI so the browser can measure line
+  // positions for scrolling.
   const measureStr = useMemo(
     () =>
       alignment.cells
@@ -285,13 +319,18 @@ export function useTypingGame(
   );
 
   const coachWordsKey = coachPracticeWords.join("\0");
+  // Any change to these settings should create a fresh prompt/test.
   const settingsKey = `${mode}-${wordCount}-${timerDuration}-${quoteLength}-${punctuation}-${numbers}-${coachMode}-${coachWordsKey}`;
 
 
+  // Keep URL mode and hook state in sync when the route provides a mode.
   useEffect(() => {
     if (urlMode != null) setMode(urlMode);
   }, [urlMode]);
 
+  // These tiny effects keep refs in sync with React state. The interval callback
+  // reads refs so it always sees the latest value without recreating the interval
+  // on every keystroke.
   useEffect(() => { displayTextRef.current = displayText; }, [displayText]);
   useEffect(() => { rawInputRef.current = rawInput; }, [rawInput]);
   useEffect(() => { incorrectKeystrokesRef.current = incorrectKeystrokes; }, [incorrectKeystrokes]);
@@ -302,6 +341,8 @@ export function useTypingGame(
   useEffect(() => { incorrectHistoryRef.current = incorrectHistory; }, [incorrectHistory]);
 
   useEffect(() => {
+    // Browser keyboard events are used to keep Caps Lock and Shift indicators in
+    // sync even if the hidden textarea is not the only focused element.
     const syncModifierKeyboardState = (event: KeyboardEvent) => {
       setIsCapsLockOn(event.getModifierState("CapsLock"));
       setIsShiftPressed(event.getModifierState("Shift"));
@@ -315,20 +356,25 @@ export function useTypingGame(
   }, []);
 
 
+  // Public helper used by the visible typing area. Clicking the visual text
+  // focuses the hidden textarea.
   const focusTypingInput = useCallback(() => {
     scheduleTextareaFocus(textareaRef, setIsInputFocused);
   }, []);
 
+  // Autofocus the hidden textarea whenever a new test is generated.
   useEffect(() => {
     return scheduleTextareaFocus(textareaRef, setIsInputFocused);
   }, [settingsKey, regenKey]);
 
+  // Capture unfinished effort when the current test is replaced.
   useEffect(() => {
     return () => {
       captureAbandonedRunIfAny();
     };
   }, [settingsKey, regenKey, captureAbandonedRunIfAny]);
 
+  // Capture unfinished effort if the user closes or refreshes the page.
   useEffect(() => {
     const handler = () => captureAbandonedRunIfAny();
     window.addEventListener("beforeunload", handler);
@@ -339,6 +385,7 @@ export function useTypingGame(
   }, [captureAbandonedRunIfAny]);
 
 
+  // Starts the timer on the first typed character, not when the page loads.
   useEffect(() => {
     if (!startTime && rawInput.length > 0) {
       const now = Date.now();
@@ -351,6 +398,8 @@ export function useTypingGame(
   }, [rawInput, startTime]);
 
 
+  // Keeps the hidden textarea cursor at the end. This works with selection
+  // blocking so users cannot edit the middle of the input.
   useLayoutEffect(() => {
     const el = textareaRef.current;
     if (el) {
@@ -360,6 +409,8 @@ export function useTypingGame(
   }, [rawInput]);
 
 
+  // Resets every piece of game state for a new prompt while keeping the selected
+  // settings. This is called for new tests, retakes and quote loads.
   const resetState = useCallback((text: string) => {
     setDisplayText(text);
     setRawInput("");
@@ -388,6 +439,8 @@ export function useTypingGame(
   }, [errorCollector, clearAllKeymapReactFlashes]);
 
 
+  // Main timer tick. `setInterval` runs roughly once per second and updates live
+  // metrics, history arrays and time-mode completion values.
   useEffect(() => {
     if (!startTime || isGameEnded) return;
 
@@ -397,12 +450,15 @@ export function useTypingGame(
       const currentTick = Math.floor(seconds);
       const rawLen = rawInputRef.current.length;
 
+      // Live metric calculation uses latest ref values so the interval is not
+      // tied to every keystroke render.
       const correct = getCorrectCharsSoFar(displayTextRef.current, rawInputRef.current);
       const rawChars = computeRawChars(displayTextRef.current, rawInputRef.current);
       const wpmVal = charsToWpm(correct, seconds);
       const rawWpmVal = charsToWpm(rawChars, seconds);
 
       if (currentTick > lastBurstTickRef.current) {
+        // Per-second history is used by the result graph and consistency score.
         const keysPressed = keysPressedThisSecondRef.current;
         const burst = Math.round((keysPressed / 5) * 60);
         const incorrectThisSecond =
@@ -418,6 +474,7 @@ export function useTypingGame(
       }
 
       if (mode === "time") {
+        // In time mode the game stops once the chosen duration has passed.
         const limit = parseInt(timerDuration, 10);
         if (!Number.isNaN(limit) && seconds >= limit) {
           setElapsedSeconds(seconds);
@@ -437,6 +494,9 @@ export function useTypingGame(
   }, [startTime, isGameEnded, mode, timerDuration]);
 
 
+  // Finalisation effect. It runs once when the game ends, calculates final
+  // metrics, saves the result, saves word mistakes, awards XP/badges and maybe
+  // schedules an AI coaching run.
   useEffect(() => {
     if (!isGameEnded || !startTime) return;
     if (endGameFinalizedRef.current) return;
@@ -464,6 +524,7 @@ export function useTypingGame(
     let consistencyVal: number;
 
     if (mode === "time") {
+      // Time mode expects one graph value per second of the selected duration.
       const limit = parseInt(timerDuration, 10);
       const expected = Number.isNaN(limit) ? 0 : limit;
       const keysPressed = keysPressedThisSecondRef.current;
@@ -482,6 +543,8 @@ export function useTypingGame(
       setRawWpmHistory(rawWpmHistoryFinal);
       setIncorrectHistory(incorrectHistoryFinal);
     } else {
+      // Words and quote modes can end mid-second, so the final burst value is
+      // adjusted using the partial second duration.
       const elapsedMs = performance.now() - startPerformanceTimeRef.current;
       const totalSeconds = elapsedMs / 1000;
       const partialSeconds = totalSeconds % 1;
@@ -509,6 +572,8 @@ export function useTypingGame(
     if (!hasSavedResultRef.current) {
       hasSavedResultRef.current = true;
 
+      // Final alignment is recomputed from the final target/typed text before
+      // word-level analytics are finalised.
       const finalAlignment = computeAlignment(displayText, rawInput);
       const finalizedMistakes = errorCollector.finalize(
         displayText,
@@ -540,6 +605,8 @@ export function useTypingGame(
         !hasUnresolvedCellsAtEnd &&
         !hasUnresolvedWordsAtEnd;
 
+      // Server action: saves the completed typing session in the database using
+      // Clerk authentication and Prisma on the server.
       saveTypingResult({
         wpm: roundTo2(finalWpmVal),
         rawWpm: roundTo2(charsToWpm(rawChars, finalSeconds)),
@@ -563,12 +630,15 @@ export function useTypingGame(
         .then(async (res) => {
           if ("typingResultId" in res && res.typingResultId) {
             if (mistakesToSave.length > 0) {
+              // Word mistakes are saved separately because they are detailed
+              // telemetry records linked to the typing result.
               await saveWordMistakes({
                 typing_result_id: res.typingResultId,
                 word_mistakes: mistakesToSave,
               });
             }
             const incompleteRuns = takeAllIncompleteRuns();
+            // XP and badges are awarded after the saved result exists.
             const xpResult = await awardXpForTypingResult({
               typingResultId: res.typingResultId,
               elapsedSeconds: finalSeconds,
@@ -591,6 +661,8 @@ export function useTypingGame(
               });
             }
           }
+          // AI coaching is scheduled after the result save; it may run later in
+          // the background depending on eligibility thresholds.
           await scheduleMaybeFirstTypingCoachRun();
         })
         .catch(console.error);
@@ -612,6 +684,7 @@ export function useTypingGame(
   ]);
 
 
+  // Generates or loads the target text whenever mode/settings change.
   useEffect(() => {
     if (mode === "time" || mode === "words") {
       setActiveQuoteMeta(null);
@@ -621,6 +694,8 @@ export function useTypingGame(
       if (punctuation) text = addPunctuation(text);
       resetState(text);
     } else if (mode === "quote") {
+      // Quote mode fetches a quote asynchronously. The cancellation flag avoids
+      // updating state if the component switches modes before the quote returns.
       let isCancelled = false;
       const loadQuote = async () => {
         try {
@@ -655,6 +730,8 @@ export function useTypingGame(
   ]);
 
 
+  // Time mode keeps extending the prompt so the user does not run out of words
+  // before the countdown finishes.
   useEffect(() => {
     if (mode !== "time" || !startTime || isGameEnded || displayText.length === 0) return;
     const remainingChars = displayText.length - alignment.promptCursor;
@@ -676,6 +753,9 @@ export function useTypingGame(
   ]);
 
 
+  // Main browser input handler for the hidden textarea. It normalises typed
+  // input, blocks simple cheating/editing cases, updates metrics and forwards
+  // the new text to the word error collector.
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       if (isGameEnded) {
@@ -685,21 +765,26 @@ export function useTypingGame(
       }
 
       let next = e.target.value;
+      // The game is a single-line typing stream, so newline characters are
+      // stripped before React state is updated.
       next = next.replace(/\n/g, "");
 
       if (next === " " && rawInput === "") {
+        // Do not allow a test to start with a space.
         e.preventDefault();
         if (textareaRef.current) textareaRef.current.value = rawInput;
         return;
       }
 
       if (next.length > rawInput.length && rawInput.endsWith(" ") && next.endsWith(" ")) {
+        // Blocks repeated spaces between words.
         e.preventDefault();
         if (textareaRef.current) textareaRef.current.value = rawInput;
         return;
       }
 
       if (next.length < rawInput.length && next.length < checkpointInputIndex) {
+        // Prevents deleting into words that were already completed correctly.
         e.preventDefault();
         if (textareaRef.current) textareaRef.current.value = rawInput;
         return;
@@ -711,6 +796,7 @@ export function useTypingGame(
         !next.endsWith(" ") &&
         wordWrapGateRef.current(next)
       ) {
+        // Blocks typing an active word beyond the visible line boundary.
         e.preventDefault();
         if (textareaRef.current) textareaRef.current.value = rawInput;
         return;
@@ -719,6 +805,7 @@ export function useTypingGame(
       if (next.length > rawInput.length && !next.endsWith(" ")) {
         const prevExtraCount = countExtrasInActiveInputWord(alignment, rawInput);
         if (prevExtraCount >= 20) {
+          // Prevents unlimited extra characters inside a single word.
           e.preventDefault();
           if (textareaRef.current) textareaRef.current.value = rawInput;
           return;
@@ -726,10 +813,13 @@ export function useTypingGame(
       }
 
       if (rawInput.length === 0 && next.length > 0 && startPerformanceTimeRef.current === 0) {
+        // High-resolution timer for burst and partial-second calculations.
         startPerformanceTimeRef.current = performance.now();
       }
 
       if (next.length > rawInput.length) {
+        // Count new keystrokes and classify the latest typed character as
+        // correct or incorrect for accuracy.
         keysPressedThisSecondRef.current += next.length - rawInput.length;
         for (let i = rawInput.length; i < next.length; i++) {
           const partial = next.slice(0, i + 1);
@@ -743,6 +833,8 @@ export function useTypingGame(
       }
 
       const currentAlignment = computeAlignment(displayText, next);
+      // Word-level telemetry is updated before committing the new raw input to
+      // React state.
       errorCollector.onInputChange(rawInput, next, displayText, currentAlignment, startPerformanceTimeRef.current);
 
       setRawInput(next);
@@ -762,6 +854,8 @@ export function useTypingGame(
     if (isGameEnded) clearAllKeymapReactFlashes();
   }, [isGameEnded, clearAllKeymapReactFlashes]);
 
+  // Keydown handles keyboard-only information that `onChange` does not provide,
+  // such as Caps Lock, Shift, Enter prevention and visual key flashes.
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (!isGameEnded && e.key.length === 1) {
@@ -787,6 +881,7 @@ export function useTypingGame(
       }
       setIsShiftPressed(e.getModifierState("Shift"));
       if (e.key === "Enter") {
+        // Enter is blocked because the typing prompt uses spaces, not new lines.
         e.preventDefault();
         if (!isGameEnded && displayText.length > 0 && rawInput.length > 0 && !isLastWordCorrect) {
           const lastWordStart = displayText.lastIndexOf(" ") + 1;
@@ -800,6 +895,7 @@ export function useTypingGame(
     [isGameEnded, displayText, rawInput, isLastWordCorrect, alignment.promptCursor]
   );
 
+  // Keyup keeps modifier-key UI state in sync after Shift/Caps Lock changes.
   const handleKeyUp = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key !== "CapsLock") {
       setIsCapsLockOn(e.getModifierState("CapsLock"));
@@ -808,10 +904,12 @@ export function useTypingGame(
   }, []);
 
 
+  // Regenerates a new test using the current settings.
   const restartTest = useCallback(() => {
     setRegenKey((k) => k + 1);
   }, []);
 
+  // Uses the same prompt again but resets all metrics/input.
   const retakeTest = useCallback(() => {
     const currentText = displayTextRef.current || displayText;
     if (!currentText) return;
@@ -819,10 +917,13 @@ export function useTypingGame(
     focusTypingInput();
   }, [displayText, resetState, focusTypingInput]);
 
+  // Moves to another generated test.
   const nextTest = useCallback(() => {
     setRegenKey((k) => k + 1);
   }, []);
 
+  // Expose state and event handlers to `TypingGame`. This keeps the UI component
+  // mostly declarative while the hook owns the game engine behaviour.
   return {
     mode, setMode,
     wordCount, setWordCount,

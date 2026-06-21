@@ -39,6 +39,8 @@ type DailyRow = {
 const MAX_NON_TIME_SESSION_SECONDS = 2 * 60 * 60; 
 
 function toDateKey(iso: string): string {
+  // Convert a game timestamp into a YYYY-MM-DD key so games can be grouped by
+  // calendar day.
   try {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
@@ -64,6 +66,7 @@ function formatDateLong(dateKey: string): string {
 }
 
 function mean(values: (number | null)[]): number | null {
+  // Average only valid numeric values and ignore null metrics.
   const valid = values.filter((v): v is number => v != null && Number.isFinite(v));
   if (!valid.length) return null;
   return valid.reduce((a, b) => a + b, 0) / valid.length;
@@ -78,6 +81,8 @@ function formatHms(totalSeconds: number): string {
 }
 
 function saneElapsedSeconds(row: StatsGameGraphPoint): number {
+  // Clamp elapsed time before daily totals so unusual saved values do not make a
+  // chart bar unrealistic.
   const elapsed = row.elapsedSeconds;
   if (elapsed == null || !Number.isFinite(elapsed) || elapsed <= 0) return 0;
 
@@ -89,6 +94,8 @@ function saneElapsedSeconds(row: StatsGameGraphPoint): number {
 }
 
 function buildDailyRows(games: StatsGameGraphPoint[]): DailyRow[] {
+  // Map groups all filtered games by day. The key is the date string and the
+  // value is the list of games completed on that day.
   const byDay = new Map<string, StatsGameGraphPoint[]>();
   for (const game of games) {
     if (!game.endedAt) continue;
@@ -98,12 +105,15 @@ function buildDailyRows(games: StatsGameGraphPoint[]): DailyRow[] {
     byDay.set(key, arr);
   }
 
+  // Convert each date group into one chart row with daily totals and averages.
   return [...byDay.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([dateKey, rows]) => {
+      // Sum all safe elapsed seconds for the bar chart.
       const totalSeconds = rows.reduce((sum, r) => {
         return sum + saneElapsedSeconds(r);
       }, 0);
+      // Highest WPM is calculated from valid WPM values for that day.
       const wpmVals = rows.map((r) => r.wpm).filter((v): v is number => v != null && Number.isFinite(v));
       const highestWpm = wpmVals.length ? Math.max(...wpmVals) : null;
 
@@ -152,15 +162,18 @@ type Props = {
 };
 
 export function StatsDailyTypingComboGraph({ games }: Props) {
+  // Build daily chart rows only when the filtered games change.
   const data = React.useMemo(() => buildDailyRows(games), [games]);
 
   const minutesMax = React.useMemo(() => {
+    // Choose a sensible Y-axis maximum for typing minutes.
     const vals = data.map((d) => d.minutes).filter((v) => Number.isFinite(v) && v >= 0);
     if (!vals.length) return 1;
     return Math.max(1, Math.ceil(Math.max(...vals)));
   }, [data]);
 
   const wpmMax = React.useMemo(() => {
+    // Round WPM axis maximum up to the next 10 for cleaner chart ticks.
     const vals = data.map((d) => d.avgWpm).filter((v): v is number => v != null && Number.isFinite(v));
     if (!vals.length) return 10;
     return Math.max(10, Math.ceil(Math.max(...vals) / 10) * 10);
@@ -174,8 +187,11 @@ export function StatsDailyTypingComboGraph({ games }: Props) {
       </CardHeader>
       <CardContent className="px-2 sm:p-6">
         {data.length === 0 ? (
+          // Empty state when filters return no games.
           <p className="py-8 text-center text-sm text-muted-foreground">No daily data for these filters.</p>
         ) : (
+          // Recharts composed chart combines bars for typing time and a line for
+          // average WPM on the same daily rows.
           <ChartContainer config={chartConfig} className="aspect-auto h-[300px] w-full">
             <ComposedChart data={data} margin={{ left: 12, right: 12, top: 16, bottom: 8 }}>
               <CartesianGrid vertical={false} />
@@ -250,4 +266,3 @@ export function StatsDailyTypingComboGraph({ games }: Props) {
     </Card>
   );
 }
-

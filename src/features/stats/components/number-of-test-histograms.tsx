@@ -27,17 +27,22 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export type WpmHistogramRow = {
+  // One histogram bar. rangeLabel is the WPM band and tests is the number of
+  // completed games in that band.
   rangeLabel: string;
   tests: number;
 };
 
 function buildWpmHistogram(games: StatsGameGraphPoint[]): WpmHistogramRow[] {
+  // Extract valid WPM values from the current filtered games.
   const wpmValues = games
     .map((g) => g.wpm)
     .filter((w): w is number => w != null && Number.isFinite(w) && w >= 0);
   if (wpmValues.length === 0) return [];
 
   const maxWpm = Math.max(...wpmValues);
+  // Bucket index is calculated with Math.floor. For example 37 WPM goes into
+  // bucket 3, which becomes the 30-39 range.
   const maxBucket = Math.max(0, Math.floor(maxWpm / WPM_BUCKET));
   const counts = new Array<number>(maxBucket + 1).fill(0);
   for (const w of wpmValues) {
@@ -45,6 +50,7 @@ function buildWpmHistogram(games: StatsGameGraphPoint[]): WpmHistogramRow[] {
   }
 
   return counts.map((tests, i) => {
+    // Convert each bucket index back into a readable range label.
     const low = i * WPM_BUCKET;
     const high = low + WPM_BUCKET - 1;
     return {
@@ -72,6 +78,7 @@ type StatsWpmTestHistogramProps = {
 };
 
 export function StatsWpmTestHistogram({ games }: StatsWpmTestHistogramProps) {
+  // useMemo prevents rebuilding the histogram unless the filtered games change.
   const chartData = React.useMemo(() => buildWpmHistogram(games), [games]);
 
   return (
@@ -84,6 +91,7 @@ export function StatsWpmTestHistogram({ games }: StatsWpmTestHistogramProps) {
       </CardHeader>
       <CardContent className="px-2 sm:p-6">
         {chartData.length === 0 ? (
+          // Empty state when there are no valid WPM values to bucket.
           <p className="py-8 text-center text-sm text-muted-foreground">No WPM data for these filters.</p>
         ) : (
           <ChartContainer config={chartConfig} className="aspect-auto h-[280px] w-full">

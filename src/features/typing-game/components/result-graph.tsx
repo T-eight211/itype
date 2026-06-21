@@ -66,16 +66,22 @@ interface ResultGraphProps {
   mode: string
 }
 
+// Shows the final result chart after a completed game. This is a client
+// component because the user can toggle raw WPM, burst WPM and errors.
 export function ResultGraph({ wpmHistory, rawWpmHistory, burstWpm, wpm, rawWpm, wpmDisplay, rawWpmDisplay, accuracy, accuracyDisplay, correctKeystrokes, incorrectKeystrokes, incorrectHistory, consistency, elapsedSeconds, mode }: ResultGraphProps) {
+  // Toggle state controls which lines are visible in the chart.
   const [showRaw, setShowRaw] = React.useState(true)
   const [showBurst, setShowBurst] = React.useState(true)
   const [showErrors, setShowErrors] = React.useState(true)
 
+  // Burst WPM can jump sharply, so it is smoothed before rendering.
   const smoothedBurst = React.useMemo(() => {
     const valueWindow = Math.max(...burstWpm, 0) * 0.25;
     return smoothWithValueWindow(burstWpm, 1, valueWindow);
   }, [burstWpm])
 
+  // Convert history arrays into Recharts data points. `useMemo` avoids rebuilding
+  // the array unless the input history changes.
   const chartData = React.useMemo(() => {
     const partialSecond = elapsedSeconds % 1;
     const isPartial = mode !== "time" && partialSecond > 0;
@@ -98,6 +104,7 @@ export function ResultGraph({ wpmHistory, rawWpmHistory, burstWpm, wpm, rawWpm, 
     return data;
   }, [wpmHistory, rawWpmHistory, smoothedBurst, incorrectHistory, elapsedSeconds, mode])
 
+  // Dynamic y-axis max keeps the graph readable for both low and high WPM tests.
   const yMax = React.useMemo(() => {
     const values = [...wpmHistory]
     if (showRaw) values.push(...rawWpmHistory)

@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { WordErrorEventSchema } from "./word-error-event";
 
+// WordMistake is the validated structure for one word's typing analytics. It
+// combines final word status, timing, corrections, pauses and nested error events.
 export const FinalStatusSchema = z
   .enum(["corrected", "incorrect", "skipped", "extra"])
   .describe(
@@ -256,6 +258,7 @@ export const WordMistakeSchema = z
 
 export const WordMistakeBatchSchema = z
   .object({
+    // The batch links all word mistakes to the saved typing result row.
     typing_result_id: z
       .number()
       .int()

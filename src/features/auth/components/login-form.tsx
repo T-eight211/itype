@@ -19,14 +19,21 @@ import {
 import { Input } from "@/components/ui/input"
 import { useLogin } from "../hooks/use-login"
 
+// Custom login UI rendered by the `/log-in` route. The component displays the
+// form while `useLogin()` handles Clerk sign-in and error mapping.
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  // `identifierValue` accepts either email or username because Clerk username
+  // sign-in is enabled.
   const [identifierValue, setIdentifierValue] = useState("")
   const [passwordValue, setPasswordValue] = useState("")
+  // UI-only toggle for password visibility.
   const [showPassword, setShowPassword] = useState(false)
 
+  // Hook values include Clerk readiness, loading state, mapped field errors and
+  // handlers for email/password and Google OAuth login.
   const {
     isLoaded,
     isLoading,
@@ -36,6 +43,7 @@ export function LoginForm({
     handleEmailLogin,
   } = useLogin()
 
+  // Prevents a normal browser form post and calls Clerk through the login hook.
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     await handleEmailLogin(identifierValue, passwordValue)

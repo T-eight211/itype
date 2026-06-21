@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 
 const KEY_HEIGHT = "48px";
 
+// Adds left padding to each physical keyboard row so the visual keymap looks
+// like a staggered real keyboard.
 function rowPlClass(physicalRow: 1 | 2 | 3 | 4 | 5, layoutType: "ansi" | "iso") {
   if (physicalRow === 1) return "";
   if (physicalRow === 2) return "pl-[28px]";
@@ -20,6 +22,8 @@ function rowPlClass(physicalRow: 1 | 2 | 3 | 4 | 5, layoutType: "ansi" | "iso") 
   return "";
 }
 
+// Removes keys that are not useful for the compact typing-game display, such as
+// escape/backspace style keys from imported layout files.
 function trimForDisplay(layout: KeyboardLayoutData) {
   const row1 = layout.keys.row1.length > 0 ? layout.keys.row1.slice(1) : [];
   const row2 =
@@ -35,6 +39,8 @@ function trimForDisplay(layout: KeyboardLayoutData) {
   };
 }
 
+// Decides which character label appears on each key. Dynamic mode changes the
+// label when Shift or Caps Lock is active.
 function legendToChar(
   key: KeyTuple,
   style: LegendStyle,
@@ -74,6 +80,7 @@ function legendToChar(
 
 type RowEntry = { physicalRow: 1 | 2 | 3 | 4 | 5; keys: KeyTuple[] };
 
+// Builds the list of visible rows, optionally hiding the number row.
 function buildRows(layout: KeyboardLayoutData, showNumberRow: boolean): RowEntry[] {
   const t = trimForDisplay(layout);
   const all: RowEntry[] = [
@@ -91,6 +98,8 @@ function buildRows(layout: KeyboardLayoutData, showNumberRow: boolean): RowEntry
 
 type KeycapHighlight = "rgb" | "correct" | "incorrect" | null;
 
+// Chooses how a key should be highlighted. "next" mode highlights the expected
+// next key; "react" mode briefly flashes the key the user actually pressed.
 function keycapHighlight(
   keymapDisplay: KeymapDisplay,
   nextHighlightChar: string | null | undefined,
@@ -109,6 +118,8 @@ function keycapHighlight(
   return null;
 }
 
+// Converts the logical highlight into the colour names expected by the shared
+// animated keyboard component.
 function highlightToKeylightColor(h: KeycapHighlight): "default" | "rgb" | "green" | "red" {
   if (h === "rgb") return "rgb";
   if (h === "correct") return "green";
@@ -116,6 +127,7 @@ function highlightToKeylightColor(h: KeycapHighlight): "default" | "rgb" | "gree
   return "default";
 }
 
+// Renders one physical row of keycaps.
 function LayoutKeyRow({
   row,
   layoutType,
@@ -139,6 +151,8 @@ function LayoutKeyRow({
   return (
     <KeyRow gap="md" className={pl}>
       {row.keys.map((key, idx) => {
+        // Each key gets a stable React key from its row, position and base
+        // character so React can update highlights without remounting every key.
         const keyId = `${row.physicalRow}-${idx}-${key[0] ?? "∅"}`;
         const highlight = keycapHighlight(keymapDisplay, nextHighlightChar, reactFlashes, key);
         const keylightColor = highlightToKeylightColor(highlight);
@@ -186,6 +200,9 @@ type Props = {
   className?: string;
 };
 
+// Visual keyboard shown under the typing prompt. It is controlled by user
+// settings and can show the next expected key, typed-key flashes, labels and an
+// optional hands overlay.
 export function TypingGameLayoutKeyboard({
   layout,
   showTopRowSetting,
@@ -201,6 +218,8 @@ export function TypingGameLayoutKeyboard({
   className,
 }: Props) {
   const layoutType = layout.type === "iso" ? "iso" : "ansi";
+  // Decide whether the top number row should appear based on settings, layout
+  // metadata and whether the current prompt contains numbers.
   const wantTop = computeKeymapTopRowVisible({
     keymapDisplay,
     showTopRow: showTopRowSetting,
@@ -210,6 +229,8 @@ export function TypingGameLayoutKeyboard({
   const trimmed = trimForDisplay(layout);
   const hasVisibleRow1 = trimmed.row1.length > 0;
   const showNumberRow = wantTop && hasVisibleRow1;
+  // Convert the stored keyboard layout object into rows that can be rendered
+  // as repeated KeyRow/Keycap components.
   const rows = buildRows(layout, showNumberRow);
 
   return (
@@ -223,6 +244,7 @@ export function TypingGameLayoutKeyboard({
       <div className="mx-auto w-fit scale-75 sm:scale-90 md:scale-100">
         <div className="relative">
           <div className="flex flex-col gap-2.5 px-1 py-1">
+            {/* Render each physical keyboard row from the layout data. */}
             {rows.map((row) => (
               <LayoutKeyRow
                 key={row.physicalRow}
@@ -237,6 +259,8 @@ export function TypingGameLayoutKeyboard({
               />
             ))}
           </div>
+          {/* The hands overlay is only useful in "next key" mode because it
+              points to the finger for the next expected character. */}
           {showHandsOverlay && keymapDisplay === "next" && (
             <TypingGameHandsOverlay
               activeChar={nextHighlightChar}

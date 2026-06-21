@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// Zod schemas define and validate the shape of individual typing error events.
+// They are used before saving analytics so substitutions, omissions, insertions,
+// transpositions and pauses all have predictable fields.
 export const KeyboardRowSchema = z
   .enum(["number", "top", "home", "bottom", "space"])
   .describe("Physical keyboard row the key sits on (ANSI QWERTY).")
@@ -207,6 +210,8 @@ const PauseDetailsSchema = z
   });
 
 const WordErrorEventBaseSchema = z.object({
+  // Shared fields that every error event stores, regardless of its specific
+  // error type.
   event_order: z
     .number()
     .int()
@@ -365,6 +370,9 @@ export const PauseEventSchema = WordErrorEventBaseSchema.extend({
   });
 
 export const WordErrorEventSchema = z
+  // Discriminated union means Zod chooses the correct schema from error_type.
+  // For example, "pause" requires pause details while "insertion" requires
+  // inserted character details.
   .discriminatedUnion("error_type", [
     SubstitutionEventSchema,
     TranspositionEventSchema,
